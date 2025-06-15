@@ -1,0 +1,33 @@
+name: clix
+description: Flutter SDK for Clix service - customer engagement platform with push notifications and analytics
+version: 0.0.1
+homepage: https://clix.so
+repository: https://github.com/clix-dev-llc/clix-flutter-sdk
+
+environment:
+  sdk: '>=3.0.0 <4.0.0'
+  flutter: ">=3.0.0"
+
+dependencies:
+  flutter:
+    sdk: flutter
+  http: ^1.2.0
+  shared_preferences: ^2.2.2
+  device_info_plus: ^10.1.0
+  firebase_messaging: ^14.7.10
+  firebase_core: ^2.24.2
+  uuid: ^4.3.3
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^4.0.0
+
+flutter:
+  plugin:
+    platforms:
+      android:
+        package: so.clix
+        pluginClass: ClixPlugin
+      ios:
+        pluginClass: ClixPlugin

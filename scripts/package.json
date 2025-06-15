@@ -1,0 +1,26 @@
+{
+  "name": "clix-flutter-sdk-scripts",
+  "version": "1.0.0",
+  "description": "Build scripts for Clix Flutter SDK",
+  "scripts": {
+    "build": "flutter packages get && dart compile kernel lib/clix.dart -o build/clix.dill",
+    "clean": "flutter clean && rm -rf .dart_tool/ build/ .packages pubspec.lock",
+    "format": "dart format --set-exit-if-changed lib/ test/ samples/",
+    "lint": "dart analyze --fatal-infos --fatal-warnings",
+    "lint:fix": "dart fix --apply && dart format lib/ test/ samples/",
+    "test": "flutter test --coverage",
+    "test:watch": "flutter test --coverage --watch",
+    "analyze": "dart analyze --verbose && dart pub deps",
+    "deps:get": "flutter packages get",
+    "deps:upgrade": "flutter packages upgrade",
+    "deps:check": "dart pub deps && dart pub outdated",
+    "doctor": "flutter doctor -v && dart --version",
+    "all": "npm run format && npm run lint:fix && npm run test && npm run build"
+  },
+  "keywords": [
+    "flutter",
+    "dart",
+    "sdk",
+    "clix"
+  ]
+}
