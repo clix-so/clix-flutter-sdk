@@ -1,9 +1,24 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
-import 'package:clix/clix.dart';
+import 'package:firebase_core/firebase_core.dart';
+import 'package:firebase_messaging/firebase_messaging.dart';
+import 'package:clix_flutter/clix.dart';
+
+// Background message handler (must be top-level function)
+@pragma('vm:entry-point')
+Future<void> _firebaseMessagingBackgroundHandler(RemoteMessage message) async {
+  await Firebase.initializeApp();
+  print('Handling a background message: ${message.messageId}');
+}
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
+
+  // Initialize Firebase
+  await Firebase.initializeApp();
+
+  // Set up background message handler
+  FirebaseMessaging.onBackgroundMessage(_firebaseMessagingBackgroundHandler);
 
   // Initialize Clix SDK with static method
   await Clix.initialize(const ClixConfig(
@@ -12,61 +27,160 @@ void main() async {
     logLevel: ClixLogLevel.debug,
   ));
 
-  runApp(const MyApp());
+  runApp(const ClixSampleApp());
 }
 
-class MyApp extends StatelessWidget {
-  const MyApp({super.key});
+class ClixSampleApp extends StatelessWidget {
+  const ClixSampleApp({super.key});
 
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      title: 'Clix Flutter SDK Example',
+      title: 'Clix iOS-Style Sample',
+      debugShowCheckedModeBanner: false,
       theme: ThemeData(
-        primarySwatch: Colors.blue,
+        // iOS-inspired color scheme
         useMaterial3: true,
+        colorScheme: ColorScheme.fromSeed(
+          seedColor: const Color(0xFF007AFF), // iOS blue
+          brightness: Brightness.light,
+        ),
+        
+        // iOS-inspired typography
+        textTheme: const TextTheme(
+          headlineLarge: TextStyle(
+            fontSize: 34,
+            fontWeight: FontWeight.w700,
+            letterSpacing: -0.5,
+          ),
+          headlineMedium: TextStyle(
+            fontSize: 28,
+            fontWeight: FontWeight.w600,
+            letterSpacing: -0.3,
+          ),
+          headlineSmall: TextStyle(
+            fontSize: 22,
+            fontWeight: FontWeight.w600,
+            letterSpacing: -0.2,
+          ),
+          titleLarge: TextStyle(
+            fontSize: 20,
+            fontWeight: FontWeight.w600,
+            letterSpacing: -0.1,
+          ),
+          titleMedium: TextStyle(
+            fontSize: 16,
+            fontWeight: FontWeight.w500,
+          ),
+          bodyLarge: TextStyle(
+            fontSize: 17,
+            fontWeight: FontWeight.w400,
+          ),
+          bodyMedium: TextStyle(
+            fontSize: 15,
+            fontWeight: FontWeight.w400,
+          ),
+        ),
+        
+        // iOS-inspired card design
+        cardTheme: const CardThemeData(
+          elevation: 0,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.all(Radius.circular(12)),
+            side: BorderSide(
+              color: Color(0xFFE0E0E0),
+              width: 0.5,
+            ),
+          ),
+          color: Colors.white,
+        ),
+        
+        // iOS-inspired button design
+        elevatedButtonTheme: ElevatedButtonThemeData(
+          style: ElevatedButton.styleFrom(
+            elevation: 0,
+            padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(8),
+            ),
+            textStyle: const TextStyle(
+              fontSize: 16,
+              fontWeight: FontWeight.w600,
+            ),
+          ),
+        ),
+        
+        // iOS-inspired input field design
+        inputDecorationTheme: InputDecorationTheme(
+          filled: true,
+          fillColor: Colors.grey.shade50,
+          border: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(8),
+            borderSide: BorderSide(color: Colors.grey.shade300),
+          ),
+          enabledBorder: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(8),
+            borderSide: BorderSide(color: Colors.grey.shade300),
+          ),
+          focusedBorder: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(8),
+            borderSide: const BorderSide(color: Color(0xFF007AFF), width: 2),
+          ),
+          contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+        ),
       ),
-      home: const MyHomePage(),
+      home: const HomePage(),
     );
   }
 }
 
-class MyHomePage extends StatefulWidget {
-  const MyHomePage({super.key});
+class HomePage extends StatefulWidget {
+  const HomePage({super.key});
 
   @override
-  State<MyHomePage> createState() => _MyHomePageState();
+  State<HomePage> createState() => _HomePageState();
 }
 
-class _MyHomePageState extends State<MyHomePage> {
+class _HomePageState extends State<HomePage> {
   final _userIdController = TextEditingController();
-  final _propertyNameController = TextEditingController();
+  final _propertyKeyController = TextEditingController();
   final _propertyValueController = TextEditingController();
-  final _eventNameController = TextEditingController();
 
-  String _status = 'SDK Initialized';
+  String _statusMessage = 'SDK Initialized Successfully';
+  String? _deviceId;
+  String? _pushToken;
   StreamSubscription<ClixPushNotificationPayload>? _receivedSubscription;
   StreamSubscription<ClixPushNotificationPayload>? _tappedSubscription;
 
   @override
   void initState() {
     super.initState();
+    _initializeData();
     _setupNotificationStreams();
   }
 
-  void _setupNotificationStreams() {
-    // Use streams for notification handling (more Dart-idiomatic)
-    _receivedSubscription = Clix.onNotificationReceived?.listen((payload) {
+  Future<void> _initializeData() async {
+    try {
+      final deviceId = await Clix.getDeviceId();
+      final pushToken = await Clix.getPushToken();
+      
       setState(() {
-        _status = 'Notification received: ${payload.messageId}';
+        _deviceId = deviceId;
+        _pushToken = pushToken;
       });
+    } catch (e) {
+      _updateStatus('Failed to load device information: $e');
+    }
+  }
+
+  void _setupNotificationStreams() {
+    _receivedSubscription = Clix.onNotificationReceived?.listen((payload) {
+      _updateStatus('Notification received: ${payload.messageId}');
     });
 
     _tappedSubscription = Clix.onNotificationTapped?.listen((payload) {
-      setState(() {
-        _status = 'Notification tapped: ${payload.messageId}';
-      });
-
+      _updateStatus('Notification tapped: ${payload.messageId}');
+      
       // Handle deep links
       if (payload.landingUrl != null) {
         _handleDeepLink(payload.landingUrl!);
@@ -75,192 +189,457 @@ class _MyHomePageState extends State<MyHomePage> {
   }
 
   void _handleDeepLink(String url) {
-    // Handle deep link navigation
     ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text('Opening: $url')),
+      SnackBar(
+        content: Text('Opening: $url'),
+        backgroundColor: const Color(0xFF007AFF),
+        behavior: SnackBarBehavior.floating,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+      ),
     );
+  }
+
+  void _updateStatus(String message) {
+    setState(() {
+      _statusMessage = message;
+    });
   }
 
   Future<void> _setUserId() async {
     final userId = _userIdController.text.trim();
-    if (userId.isEmpty) return;
+    if (userId.isEmpty) {
+      _updateStatus('Please enter a user ID');
+      return;
+    }
 
     try {
       await Clix.setUserId(userId);
-      setState(() {
-        _status = 'User ID set: $userId';
-      });
+      _updateStatus('User ID set: $userId');
+      _userIdController.clear();
     } catch (e) {
-      setState(() {
-        _status = 'Error setting user ID: $e';
-      });
+      _updateStatus('Failed to set user ID: $e');
+    }
+  }
+
+  Future<void> _removeUserId() async {
+    try {
+      await Clix.removeUserId();
+      _updateStatus('User ID removed successfully');
+    } catch (e) {
+      _updateStatus('Failed to remove user ID: $e');
     }
   }
 
   Future<void> _setUserProperty() async {
-    final name = _propertyNameController.text.trim();
+    final key = _propertyKeyController.text.trim();
     final value = _propertyValueController.text.trim();
-    if (name.isEmpty || value.isEmpty) return;
+    
+    if (key.isEmpty || value.isEmpty) {
+      _updateStatus('Please enter both property key and value');
+      return;
+    }
 
     try {
-      await Clix.setUserProperty(name, value);
-      setState(() {
-        _status = 'User property set: $name = $value';
-      });
+      await Clix.setUserProperty(key, value);
+      _updateStatus('Property set: $key = $value');
+      _propertyKeyController.clear();
+      _propertyValueController.clear();
     } catch (e) {
-      setState(() {
-        _status = 'Error setting property: $e';
-      });
+      _updateStatus('Failed to set property: $e');
     }
   }
 
-  // This method is provided as an example of how to track events with Clix SDK
-  // It's not currently used in the UI but is kept for reference and future use
-  Future<void> _trackEvent() async {
-    final eventName = _eventNameController.text.trim();
-    if (eventName.isEmpty) return;
+  Future<void> _removeUserProperty() async {
+    final key = _propertyKeyController.text.trim();
+    if (key.isEmpty) {
+      _updateStatus('Please enter a property key to remove');
+      return;
+    }
 
     try {
-      await Clix.trackEvent(
-        eventName,
-        properties: {
-          'timestamp': DateTime.now().toIso8601String(),
-          'source': 'example_app',
-          'screen': 'home',
-        },
-      );
-      setState(() {
-        _status = 'Event tracked: $eventName';
-      });
+      await Clix.removeUserProperty(key);
+      _updateStatus('Property removed: $key');
+      _propertyKeyController.clear();
     } catch (e) {
-      setState(() {
-        _status = 'Error tracking event: $e';
-      });
+      _updateStatus('Failed to remove property: $e');
     }
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('Clix SDK Example (Dart Idiomatic)'),
-        backgroundColor: Theme.of(context).colorScheme.inversePrimary,
+      backgroundColor: Colors.grey.shade50,
+      body: SafeArea(
+        child: SingleChildScrollView(
+          padding: const EdgeInsets.all(20),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              // Header with logo and title
+              _buildHeader(),
+              const SizedBox(height: 24),
+              
+              // SDK Status Card
+              _buildStatusCard(),
+              const SizedBox(height: 20),
+              
+              // Device Information Card
+              _buildDeviceInfoCard(),
+              const SizedBox(height: 20),
+              
+              // User Management Section
+              _buildUserManagementCard(),
+              const SizedBox(height: 20),
+              
+              // User Properties Section
+              _buildUserPropertiesCard(),
+              const SizedBox(height: 20),
+              
+              // Quick Actions
+              _buildQuickActionsCard(),
+            ],
+          ),
+        ),
       ),
-      body: Padding(
-        padding: const EdgeInsets.all(16.0),
+    );
+  }
+
+  Widget _buildHeader() {
+    return Column(
+      children: [
+        // Logo
+        Container(
+          width: 80,
+          height: 80,
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(16),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withValues(alpha: 0.1),
+                blurRadius: 12,
+                offset: const Offset(0, 4),
+              ),
+            ],
+          ),
+          child: ClipRRect(
+            borderRadius: BorderRadius.circular(16),
+            child: Image.asset(
+              'assets/logo.png',
+              fit: BoxFit.cover,
+            ),
+          ),
+        ),
+        const SizedBox(height: 16),
+        
+        // Title
+        Text(
+          'Clix SDK Sample',
+          style: Theme.of(context).textTheme.headlineMedium?.copyWith(
+            color: Colors.black87,
+            fontWeight: FontWeight.w700,
+          ),
+        ),
+        const SizedBox(height: 4),
+        Text(
+          'iOS-Style Flutter Implementation',
+          style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+            color: Colors.grey.shade600,
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildStatusCard() {
+    return Card(
+      child: Padding(
+        padding: const EdgeInsets.all(20),
         child: Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
+          crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // SDK Info Card
-            Card(
-              child: Padding(
-                padding: const EdgeInsets.all(16.0),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      'SDK Information',
-                      style: Theme.of(context).textTheme.headlineSmall,
-                    ),
-                    const SizedBox(height: 8),
-                    Text('Device ID: ${Clix.getDeviceIdSync() ?? 'N/A'}'),
-                    const Text('User ID: Not available in static API'),
-                    Text('Status: $_status'),
-                  ],
+            Row(
+              children: [
+                const Icon(
+                  Icons.info_outline,
+                  color: Color(0xFF007AFF),
+                  size: 20,
+                ),
+                const SizedBox(width: 8),
+                Text(
+                  'Status',
+                  style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 12),
+            Container(
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: const Color(0xFF007AFF).withValues(alpha: 0.05),
+                borderRadius: BorderRadius.circular(8),
+                border: Border.all(
+                  color: const Color(0xFF007AFF).withValues(alpha: 0.1),
+                ),
+              ),
+              child: Text(
+                _statusMessage,
+                style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                  color: const Color(0xFF007AFF),
+                  fontWeight: FontWeight.w500,
                 ),
               ),
             ),
-            const SizedBox(height: 16),
+          ],
+        ),
+      ),
+    );
+  }
 
-            // User ID Section
-            _buildInputSection(
-              title: 'Set User ID',
+  Widget _buildDeviceInfoCard() {
+    return Card(
+      child: Padding(
+        padding: const EdgeInsets.all(20),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                Icon(
+                  Icons.phone_iphone,
+                  color: Colors.grey.shade700,
+                  size: 20,
+                ),
+                const SizedBox(width: 8),
+                Text(
+                  'Device Information',
+                  style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 16),
+            
+            _buildInfoRow('Device ID', _deviceId ?? 'Loading...'),
+            const SizedBox(height: 8),
+            _buildInfoRow('Push Token', _pushToken?.substring(0, 20) ?? 'Loading...'),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildInfoRow(String label, String value) {
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        SizedBox(
+          width: 100,
+          child: Text(
+            label,
+            style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+              color: Colors.grey.shade600,
+              fontWeight: FontWeight.w500,
+            ),
+          ),
+        ),
+        Expanded(
+          child: Text(
+            value,
+            style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+              fontFamily: 'Monaco',
+              fontSize: 13,
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildUserManagementCard() {
+    return Card(
+      child: Padding(
+        padding: const EdgeInsets.all(20),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                Icon(
+                  Icons.person_outline,
+                  color: Colors.green.shade600,
+                  size: 20,
+                ),
+                const SizedBox(width: 8),
+                Text(
+                  'User Management',
+                  style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 16),
+            
+            TextField(
               controller: _userIdController,
-              hintText: 'Enter user ID',
-              buttonText: 'Set User ID',
-              onPressed: _setUserId,
-            ),
-            const SizedBox(height: 16),
-
-            // User Property Section
-            _buildPropertySection(),
-            const SizedBox(height: 16),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _buildInputSection({
-    required String title,
-    required TextEditingController controller,
-    required String hintText,
-    required String buttonText,
-    required VoidCallback onPressed,
-  }) {
-    return Card(
-      child: Padding(
-        padding: const EdgeInsets.all(16.0),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              title,
-              style: Theme.of(context).textTheme.headlineSmall,
-            ),
-            const SizedBox(height: 8),
-            TextField(
-              controller: controller,
-              decoration: InputDecoration(
-                border: const OutlineInputBorder(),
-                labelText: title,
-                hintText: hintText,
-              ),
-            ),
-            const SizedBox(height: 8),
-            ElevatedButton(
-              onPressed: onPressed,
-              child: Text(buttonText),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _buildPropertySection() {
-    return Card(
-      child: Padding(
-        padding: const EdgeInsets.all(16.0),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              'Set User Property',
-              style: Theme.of(context).textTheme.headlineSmall,
-            ),
-            const SizedBox(height: 8),
-            TextField(
-              controller: _propertyNameController,
               decoration: const InputDecoration(
-                border: OutlineInputBorder(),
-                labelText: 'Property Name',
-                hintText: 'e.g., subscription_plan',
+                labelText: 'User ID',
+                hintText: 'Enter user identifier',
+                prefixIcon: Icon(Icons.badge_outlined),
               ),
             ),
-            const SizedBox(height: 8),
+            const SizedBox(height: 16),
+            
+            Row(
+              children: [
+                Expanded(
+                  child: ElevatedButton.icon(
+                    onPressed: _setUserId,
+                    icon: const Icon(Icons.person_add, size: 18),
+                    label: const Text('Set User ID'),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: Colors.green.shade600,
+                      foregroundColor: Colors.white,
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: ElevatedButton.icon(
+                    onPressed: _removeUserId,
+                    icon: const Icon(Icons.person_remove, size: 18),
+                    label: const Text('Remove'),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: Colors.red.shade600,
+                      foregroundColor: Colors.white,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildUserPropertiesCard() {
+    return Card(
+      child: Padding(
+        padding: const EdgeInsets.all(20),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                Icon(
+                  Icons.settings_outlined,
+                  color: Colors.orange.shade600,
+                  size: 20,
+                ),
+                const SizedBox(width: 8),
+                Text(
+                  'User Properties',
+                  style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 16),
+            
+            TextField(
+              controller: _propertyKeyController,
+              decoration: const InputDecoration(
+                labelText: 'Property Key',
+                hintText: 'e.g., subscription_plan',
+                prefixIcon: Icon(Icons.key_outlined),
+              ),
+            ),
+            const SizedBox(height: 12),
+            
             TextField(
               controller: _propertyValueController,
               decoration: const InputDecoration(
-                border: OutlineInputBorder(),
                 labelText: 'Property Value',
                 hintText: 'e.g., premium',
+                prefixIcon: Icon(Icons.edit_outlined),
               ),
             ),
-            const SizedBox(height: 8),
-            ElevatedButton(
-              onPressed: _setUserProperty,
-              child: const Text('Set Property'),
+            const SizedBox(height: 16),
+            
+            Row(
+              children: [
+                Expanded(
+                  child: ElevatedButton.icon(
+                    onPressed: _setUserProperty,
+                    icon: const Icon(Icons.add, size: 18),
+                    label: const Text('Set Property'),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: Colors.orange.shade600,
+                      foregroundColor: Colors.white,
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: ElevatedButton.icon(
+                    onPressed: _removeUserProperty,
+                    icon: const Icon(Icons.remove, size: 18),
+                    label: const Text('Remove'),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: Colors.red.shade600,
+                      foregroundColor: Colors.white,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildQuickActionsCard() {
+    return Card(
+      child: Padding(
+        padding: const EdgeInsets.all(20),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                Icon(
+                  Icons.flash_on_outlined,
+                  color: Colors.purple.shade600,
+                  size: 20,
+                ),
+                const SizedBox(width: 8),
+                Text(
+                  'Quick Actions',
+                  style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 16),
+            
+            SizedBox(
+              width: double.infinity,
+              child: ElevatedButton.icon(
+                onPressed: _initializeData,
+                icon: const Icon(Icons.refresh, size: 18),
+                label: const Text('Refresh Device Info'),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: Colors.purple.shade600,
+                  foregroundColor: Colors.white,
+                ),
+              ),
             ),
           ],
         ),
@@ -271,9 +650,8 @@ class _MyHomePageState extends State<MyHomePage> {
   @override
   void dispose() {
     _userIdController.dispose();
-    _propertyNameController.dispose();
+    _propertyKeyController.dispose();
     _propertyValueController.dispose();
-    _eventNameController.dispose();
     _receivedSubscription?.cancel();
     _tappedSubscription?.cancel();
     super.dispose();

@@ -1,20 +1,9 @@
 import 'dart:async';
-import 'package:flutter/foundation.dart';
-import 'package:firebase_core/firebase_core.dart';
-import 'package:firebase_messaging/firebase_messaging.dart';
 
 import 'clix_config.dart';
-import 'clix_environment.dart';
 import 'clix_version.dart';
-import 'clix_app_delegate.dart';
+import '../services/platform_service.dart';
 import '../services/storage_service.dart';
-import '../services/device_service.dart';
-import '../services/event_service.dart';
-import '../services/notification_service.dart';
-import '../services/token_service.dart';
-import '../services/clix_api_client.dart';
-import '../services/device_api_service.dart';
-import '../services/event_api_service.dart';
 import '../models/clix_push_notification_payload.dart';
 import '../utils/clix_error.dart';
 import '../utils/clix_log_level.dart';
@@ -24,49 +13,23 @@ typedef NotificationHandler = void Function(ClixPushNotificationPayload payload)
 
 /// Main Clix SDK class matching iOS SDK interface
 /// Provides static methods for all public APIs
-final class Clix {
+class Clix {
   static Clix? _shared;
   static bool _isInitializing = false;
   static final _initializationCompleter = Completer<void>();
 
-  // These fields are used for dependency injection and are required for the SDK to function properly
-  @pragma('vm:prefer-inline')
   final ClixConfig _config;
-  @pragma('vm:prefer-inline')
-  final ClixEnvironment _environment;
-  @pragma('vm:prefer-inline')
   final StorageService _storage;
-  final ClixAPIClient _apiClient;
-  @pragma('vm:prefer-inline')
-  final DeviceAPIService _deviceAPIService;
-  @pragma('vm:prefer-inline')
-  final EventAPIService _eventAPIService;
-  final TokenService _tokenService;
-  final DeviceService _deviceService;
-  final EventService _eventService;
-  final NotificationService _notificationService;
+  
+  // Notification handlers
+  static NotificationHandler? _notificationReceivedHandler;
+  static NotificationHandler? _notificationTappedHandler;
 
   Clix._({
     required ClixConfig config,
-    required ClixEnvironment environment,
     required StorageService storage,
-    required ClixAPIClient apiClient,
-    required DeviceAPIService deviceAPIService,
-    required EventAPIService eventAPIService,
-    required TokenService tokenService,
-    required DeviceService deviceService,
-    required EventService eventService,
-    required NotificationService notificationService,
   }) : _config = config,
-       _environment = environment,
-       _storage = storage,
-       _apiClient = apiClient,
-       _deviceAPIService = deviceAPIService,
-       _eventAPIService = eventAPIService,
-       _tokenService = tokenService,
-       _deviceService = deviceService,
-       _eventService = eventService,
-       _notificationService = notificationService;
+       _storage = storage;
 
   /// Initialize Clix SDK (async version - recommended)
   static Future<void> initialize(ClixConfig config) async {
@@ -86,57 +49,25 @@ final class Clix {
       ClixLogger.setLogLevel(config.logLevel);
       ClixLogger.info('Initializing Clix SDK v${ClixVersion.version}');
 
-      // Create environment
-      final environment = ClixEnvironment.current();
-
-      // Initialize ClixAppDelegate
-      await ClixAppDelegate.initialize();
-
-      // Initialize services in dependency order
+      // Initialize storage
       final storage = StorageService();
       await storage.initialize();
 
-      final apiClient = ClixAPIClient(
-        config: config,
-        environment: environment,
+      // Initialize platform service with config
+      await PlatformService.initialize(
+        projectId: config.projectId,
+        apiKey: config.apiKey,
       );
 
-      final deviceAPIService = DeviceAPIService(apiClient: apiClient);
-      final eventAPIService = EventAPIService(apiClient: apiClient);
-
-      final tokenService = TokenService(storage: storage);
-      await tokenService.initialize();
-
-      final deviceService = DeviceService(
-        deviceAPIService: deviceAPIService,
-        storage: storage,
-        environment: environment,
-      );
-      await deviceService.initialize();
-
-      final eventService = EventService(
-        eventAPIService: eventAPIService,
-        deviceService: deviceService,
-      );
-
-      final notificationService = NotificationService(
-        eventService: eventService,
-      );
+      // Start listening to platform events
+      await PlatformService.startListening();
 
       final instance = Clix._(
         config: config,
-        environment: environment,
         storage: storage,
-        apiClient: apiClient,
-        deviceAPIService: deviceAPIService,
-        eventAPIService: eventAPIService,
-        tokenService: tokenService,
-        deviceService: deviceService,
-        eventService: eventService,
-        notificationService: notificationService,
       );
 
-      await instance._setupFirebaseMessaging();
+      await instance._setupPushMessaging();
 
       _shared = instance;
       _initializationCompleter.complete();
@@ -190,15 +121,19 @@ final class Clix {
   /// Set user ID (async version - recommended)
   static Future<void> setUserId(String userId) async {
     await _waitForInitialization();
-    await _shared!._deviceService.setUserId(userId);
+    await PlatformService.setUserId(userId);
+    await _shared!._storage.setString('userId', userId);
   }
 
   /// Set user ID (sync version - fire and forget)
   static void setUserIdSync(String userId) {
     final instance = _getShared(timeout: const Duration(milliseconds: 100));
     if (instance != null) {
-      instance._deviceService.setUserId(userId).catchError((e, stackTrace) {
+      PlatformService.setUserId(userId).catchError((e, stackTrace) {
         ClixLogger.error('Failed to set user ID (sync)', e, stackTrace);
+      });
+      instance._storage.setString('userId', userId).catchError((e, stackTrace) {
+        ClixLogger.error('Failed to save user ID (sync)', e, stackTrace);
       });
     } else {
       ClixLogger.warning('Clix not initialized, cannot set user ID');
@@ -208,15 +143,19 @@ final class Clix {
   /// Remove user ID (async version - recommended)
   static Future<void> removeUserId() async {
     await _waitForInitialization();
-    await _shared!._deviceService.removeUserId();
+    await PlatformService.removeUserId();
+    await _shared!._storage.remove('userId');
   }
 
   /// Remove user ID (sync version - fire and forget)
   static void removeUserIdSync() {
     final instance = _getShared(timeout: const Duration(milliseconds: 100));
     if (instance != null) {
-      instance._deviceService.removeUserId().catchError((e, stackTrace) {
+      PlatformService.removeUserId().catchError((e, stackTrace) {
         ClixLogger.error('Failed to remove user ID (sync)', e, stackTrace);
+      });
+      instance._storage.remove('userId').catchError((e, stackTrace) {
+        ClixLogger.error('Failed to remove user ID from storage (sync)', e, stackTrace);
       });
     } else {
       ClixLogger.warning('Clix not initialized, cannot remove user ID');
@@ -228,14 +167,14 @@ final class Clix {
   /// Set user property (async version - recommended)
   static Future<void> setUserProperty(String key, dynamic value) async {
     await _waitForInitialization();
-    await _shared!._deviceService.setUserProperty(key, value);
+    await PlatformService.setUserProperty(key, value);
   }
 
   /// Set user property (sync version - fire and forget)
   static void setUserPropertySync(String key, dynamic value) {
     final instance = _getShared(timeout: const Duration(milliseconds: 100));
     if (instance != null) {
-      instance._deviceService.setUserProperty(key, value).catchError((e, stackTrace) {
+      PlatformService.setUserProperty(key, value).catchError((e, stackTrace) {
         ClixLogger.error('Failed to set user property (sync)', e, stackTrace);
       });
     } else {
@@ -246,14 +185,14 @@ final class Clix {
   /// Set multiple user properties (async version - recommended)
   static Future<void> setUserProperties(Map<String, dynamic> userProperties) async {
     await _waitForInitialization();
-    await _shared!._deviceService.setUserProperties(userProperties);
+    await PlatformService.setUserProperties(userProperties);
   }
 
   /// Set multiple user properties (sync version - fire and forget)
   static void setUserPropertiesSync(Map<String, dynamic> userProperties) {
     final instance = _getShared(timeout: const Duration(milliseconds: 100));
     if (instance != null) {
-      instance._deviceService.setUserProperties(userProperties).catchError((e, stackTrace) {
+      PlatformService.setUserProperties(userProperties).catchError((e, stackTrace) {
         ClixLogger.error('Failed to set user properties (sync)', e, stackTrace);
       });
     } else {
@@ -264,14 +203,14 @@ final class Clix {
   /// Remove user property (async version - recommended)
   static Future<void> removeUserProperty(String key) async {
     await _waitForInitialization();
-    await _shared!._deviceService.removeUserProperty(key);
+    await PlatformService.removeUserProperty(key);
   }
 
   /// Remove user property (sync version - fire and forget)
   static void removeUserPropertySync(String key) {
     final instance = _getShared(timeout: const Duration(milliseconds: 100));
     if (instance != null) {
-      instance._deviceService.removeUserProperty(key).catchError((e, stackTrace) {
+      PlatformService.removeUserProperty(key).catchError((e, stackTrace) {
         ClixLogger.error('Failed to remove user property (sync)', e, stackTrace);
       });
     } else {
@@ -282,38 +221,18 @@ final class Clix {
   /// Remove multiple user properties (async version - recommended)
   static Future<void> removeUserProperties(List<String> keys) async {
     await _waitForInitialization();
-    await _shared!._deviceService.removeUserProperties(keys);
+    await PlatformService.removeUserProperties(keys);
   }
 
   /// Remove multiple user properties (sync version - fire and forget)
   static void removeUserPropertiesSync(List<String> keys) {
     final instance = _getShared(timeout: const Duration(milliseconds: 100));
     if (instance != null) {
-      instance._deviceService.removeUserProperties(keys).catchError((e, stackTrace) {
+      PlatformService.removeUserProperties(keys).catchError((e, stackTrace) {
         ClixLogger.error('Failed to remove user properties (sync)', e, stackTrace);
       });
     } else {
       ClixLogger.warning('Clix not initialized, cannot remove user properties');
-    }
-  }
-
-  // MARK: - Event Tracking (Static API)
-
-  /// Track event (async version - recommended)
-  static Future<void> trackEvent(String name, {Map<String, dynamic>? properties}) async {
-    await _waitForInitialization();
-    await _shared!._eventService.trackEvent(name, properties: properties);
-  }
-
-  /// Track event (sync version - fire and forget)
-  static void trackEventSync(String name, {Map<String, dynamic>? properties}) {
-    final instance = _getShared(timeout: const Duration(milliseconds: 100));
-    if (instance != null) {
-      instance._eventService.trackEvent(name, properties: properties).catchError((e, stackTrace) {
-        ClixLogger.error('Failed to track event (sync)', e, stackTrace);
-      });
-    } else {
-      ClixLogger.warning('Clix not initialized, cannot track event');
     }
   }
 
@@ -322,25 +241,33 @@ final class Clix {
   /// Get device ID (async version - recommended)
   static Future<String?> getDeviceId() async {
     await _waitForInitialization();
-    return _shared!._deviceService.deviceId;
+    return PlatformService.getDeviceId();
   }
 
   /// Get device ID (sync version with timeout protection)
   static String? getDeviceIdSync() {
     final instance = _getShared(timeout: const Duration(milliseconds: 100));
-    return instance?._deviceService.deviceId;
+    if (instance != null) {
+      // Return cached device ID if available
+      return instance._storage.getString('deviceId');
+    }
+    return null;
   }
 
   /// Get push token (async version - recommended)
   static Future<String?> getPushToken() async {
     await _waitForInitialization();
-    return _shared!._deviceService.pushToken;
+    return PlatformService.getPushToken();
   }
 
   /// Get push token (sync version with timeout protection)
   static String? getPushTokenSync() {
     final instance = _getShared(timeout: const Duration(milliseconds: 100));
-    return instance?._deviceService.pushToken;
+    if (instance != null) {
+      // Return cached push token if available
+      return instance._storage.getString('pushToken');
+    }
+    return null;
   }
 
   // MARK: - Logging (Static API)
@@ -348,76 +275,84 @@ final class Clix {
   /// Set log level
   static void setLogLevel(ClixLogLevel level) {
     ClixLogger.setLogLevel(level);
+    PlatformService.setLogLevel(level.index).catchError((e) {
+      ClixLogger.error('Failed to set log level on platform', e);
+    });
   }
 
   // MARK: - Notification Handling (Static API)
 
   /// Set notification received handler
   static void setNotificationReceivedHandler(NotificationHandler? handler) {
-    final instance = _getShared();
-    if (instance != null) {
-      instance._notificationService.setReceivedHandler(handler);
-    } else {
-      ClixLogger.warning('Clix not initialized, cannot set notification handler');
-    }
+    _notificationReceivedHandler = handler;
   }
 
   /// Set notification tapped handler
   static void setNotificationTappedHandler(NotificationHandler? handler) {
-    final instance = _getShared();
-    if (instance != null) {
-      instance._notificationService.setTappedHandler(handler);
-    } else {
-      ClixLogger.warning('Clix not initialized, cannot set notification handler');
-    }
+    _notificationTappedHandler = handler;
   }
 
   /// Get notification received stream
   static Stream<ClixPushNotificationPayload>? get onNotificationReceived {
-    final instance = _getShared();
-    return instance?._notificationService.onNotificationReceived;
+    return PlatformService.onForegroundNotification;
   }
 
   /// Get notification tapped stream
   static Stream<ClixPushNotificationPayload>? get onNotificationTapped {
-    final instance = _getShared();
-    return instance?._notificationService.onNotificationTapped;
+    return PlatformService.onNotificationTapped;
+  }
+
+  // MARK: - Push Notification Management
+
+  /// Set push token
+  static Future<void> setPushToken(String token) async {
+    await _waitForInitialization();
+    await _shared!._storage.setString('pushToken', token);
+  }
+
+  /// Get shared instance (for internal use)
+  static Clix get instance {
+    if (_shared == null) {
+      throw ClixError.notInitialized;
+    }
+    return _shared!;
   }
 
   // MARK: - Internal Methods
 
-  Future<void> _setupFirebaseMessaging() async {
+  Future<void> _setupPushMessaging() async {
     try {
-      final token = await ClixAppDelegate.getToken();
+      // Get initial token
+      final token = await PlatformService.getPushToken();
       if (token != null) {
-        await _tokenService.updateToken(token, 'FCM');
-        await _deviceService.updatePushToken(token, 'FCM');
+        await _storage.setString('pushToken', token);
+      }
+
+      // Get device ID and cache it
+      final deviceId = await PlatformService.getDeviceId();
+      if (deviceId != null) {
+        await _storage.setString('deviceId', deviceId);
       }
 
       // Set up token refresh handler
-      ClixAppDelegate.setTokenRefreshHandler((token) async {
-        await _tokenService.updateToken(token, 'FCM');
-        await _deviceService.updatePushToken(token, 'FCM');
+      PlatformService.onTokenRefresh.listen((token) async {
+        await _storage.setString('pushToken', token);
       });
 
-      // Set up message handlers
-      ClixAppDelegate.setForegroundMessageHandler(_handleForegroundMessage);
-      ClixAppDelegate.setBackgroundMessageHandler(_handleMessageOpenedApp);
-      await ClixAppDelegate.handleInitialMessage(_handleMessageOpenedApp);
+      // Set up notification handlers
+      PlatformService.onForegroundNotification.listen((payload) {
+        ClixLogger.info('Received foreground notification: ${payload.messageId}');
+        _notificationReceivedHandler?.call(payload);
+      });
+
+      PlatformService.onNotificationTapped.listen((payload) {
+        ClixLogger.info('Notification tapped: ${payload.messageId}');
+        _notificationTappedHandler?.call(payload);
+      });
 
     } catch (e, stackTrace) {
-      ClixLogger.error('Failed to setup Firebase Messaging', e, stackTrace);
+      ClixLogger.error('Failed to setup Push Messaging', e, stackTrace);
     }
-  }
-
-  void _handleForegroundMessage(ClixPushNotificationPayload payload) {
-    ClixLogger.info('Received foreground message: ${payload.messageId}');
-    _notificationService.handleNotificationReceived(payload);
-  }
-
-  void _handleMessageOpenedApp(ClixPushNotificationPayload payload) {
-    ClixLogger.info('Message opened app: ${payload.messageId}');
-    _notificationService.handleNotificationTapped(payload);
   }
 
   // MARK: - Utility Methods
@@ -427,8 +362,7 @@ final class Clix {
 
   /// Dispose SDK (for testing purposes)
   static void dispose() {
-    _shared?._apiClient.dispose();
-    _shared?._notificationService.dispose();
+    PlatformService.dispose();
     _shared = null;
   }
 }

@@ -1,63 +1,114 @@
-# Clix Flutter SDK Basic App
+# Clix Flutter SDK Sample
 
-This is a basic sample app demonstrating the Clix Flutter SDK integration.
+This sample app demonstrates how to use the Clix Flutter SDK in your application.
 
-## Running the Android App
+## Getting Started
 
-### Issue with Multiple Emulators
+⚠️ **Important**: This sample requires Firebase setup to run properly.
 
-If you encounter the following error when trying to run the Android emulator:
+1. **Set up Firebase** (Required):
+   - See [FIREBASE_SETUP.md](FIREBASE_SETUP.md) for detailed instructions
+   - Replace the template Firebase configuration files with your actual project files
 
+2. **Configure Clix credentials** by updating `lib/main.dart`:
+
+```dart
+await Clix.initialize(const ClixConfig(
+  projectId: 'YOUR_PROJECT_ID',
+  apiKey: 'YOUR_API_KEY',
+  logLevel: ClixLogLevel.debug,
+));
 ```
-ERROR | Running multiple emulators with the same AVD
-ERROR | is an experimental feature.
-ERROR | Please use -read-only flag to enable this feature.
-```
 
-This happens when you try to run multiple instances of the same Android Virtual Device (AVD). To resolve this issue, we've provided a script that runs the emulator with the `-read-only` flag.
+## Features Demonstrated
 
-### Using the Emulator Script
+This example app shows how to:
 
-1. Make sure the script is executable:
-   ```bash
-   chmod +x run_android_emulator.sh
-   ```
+- Initialize the Clix SDK
+- Set user ID for tracking
+- Set user properties for segmentation
+- Handle push notifications (received and tapped)
+- Track custom events
+- Handle deep links from notifications
 
-2. Run the script:
-   ```bash
-   ./run_android_emulator.sh
-   ```
+## Running the Sample
 
-   By default, the script uses the "Pixel_3a_API_33_arm64-v8a" AVD. If you want to use a different AVD, specify it as an argument:
-   ```bash
-   ./run_android_emulator.sh "Your_AVD_Name"
-   ```
-
-3. Once the emulator is running, you can run the Flutter app:
-   ```bash
-   flutter run
-   ```
-
-### Manual Emulator Launch
-
-If you prefer to launch the emulator manually, you can use the following command:
-
+### Android
 ```bash
-$ANDROID_SDK_ROOT/emulator/emulator -avd Pixel_3a_API_33_arm64-v8a -read-only
+flutter run
 ```
 
-Replace `Pixel_3a_API_33_arm64-v8a` with your AVD name if different.
+### iOS
+```bash
+cd ios && pod install
+flutter run
+```
 
-## Project Structure
+## Key Integration Points
 
-- `android/`: Android-specific configuration files
-- `ios/`: iOS-specific configuration files
-- `main.dart`: Main entry point for the Flutter application
+### Initialization
+The SDK must be initialized before the app runs:
+
+```dart
+void main() async {
+  WidgetsFlutterBinding.ensureInitialized();
+  
+  await Clix.initialize(const ClixConfig(
+    projectId: 'YOUR_PROJECT_ID',
+    apiKey: 'YOUR_API_KEY',
+  ));
+  
+  runApp(const MyApp());
+}
+```
+
+### User Identification
+```dart
+await Clix.setUserId('unique_user_id');
+```
+
+### User Properties
+```dart
+await Clix.setUserProperty('subscription_plan', 'premium');
+```
+
+### Event Tracking
+```dart
+await Clix.trackEvent('purchase_completed', properties: {
+  'amount': 99.99,
+  'currency': 'USD',
+  'item_id': 'SKU123'
+});
+```
+
+### Push Notification Handling
+```dart
+// Listen for received notifications
+Clix.onNotificationReceived?.listen((payload) {
+  print('Notification received: ${payload.messageId}');
+});
+
+// Listen for tapped notifications
+Clix.onNotificationTapped?.listen((payload) {
+  print('Notification tapped: ${payload.messageId}');
+  if (payload.landingUrl != null) {
+    // Handle deep link
+  }
+});
+```
 
 ## Troubleshooting
 
-If you encounter any issues:
+1. **Push notifications not working on iOS**: 
+   - Ensure you've added Push Notification capability in Xcode
+   - Add the notification service extension
 
-1. Make sure your Android SDK path is correctly set in `android/local.properties` or in your environment variables (`ANDROID_SDK_ROOT` or `ANDROID_HOME`).
-2. Ensure you have created the AVD mentioned in the script or provide your own AVD name as an argument.
-3. Check that Flutter is properly installed and configured.
+2. **Android build issues**:
+   - Make sure `google-services.json` is in the `android/app` directory
+   - Check that Firebase dependencies are properly configured
+
+3. **User not being tracked**:
+   - Verify that `setUserId` is called after SDK initialization
+   - Check API key and project ID are correct
+
+For more information, visit [https://clix.so/docs](https://clix.so/docs)

@@ -18,7 +18,7 @@ public final class GeneratedPluginRegistrant {
     try {
       flutterEngine.getPlugins().add(new so.clix.ClixPlugin());
     } catch (Exception e) {
-      Log.e(TAG, "Error registering plugin clix, so.clix.ClixPlugin", e);
+      Log.e(TAG, "Error registering plugin clix_flutter, so.clix.ClixPlugin", e);
     }
     try {
       flutterEngine.getPlugins().add(new dev.fluttercommunity.plus.device_info.DeviceInfoPlusPlugin());

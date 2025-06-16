@@ -1,5 +1,3 @@
-import 'package:firebase_messaging/firebase_messaging.dart';
-
 class ClixPushNotificationPayload {
   final String? messageId;
   final String? campaignId;
@@ -21,35 +19,6 @@ class ClixPushNotificationPayload {
     Map<String, dynamic>? customProperties,
   }) : customProperties = customProperties ?? {};
 
-  factory ClixPushNotificationPayload.fromRemoteMessage(RemoteMessage message) {
-    final data = message.data;
-    final customProps = Map<String, dynamic>.from(data);
-    
-    final standardKeys = [
-      'clix_message_id',
-      'clix_campaign_id',
-      'clix_user_id',
-      'clix_device_id',
-      'clix_tracking_id',
-      'clix_landing_url',
-      'clix_image_url',
-    ];
-    
-    for (final key in standardKeys) {
-      customProps.remove(key);
-    }
-
-    return ClixPushNotificationPayload(
-      messageId: data['clix_message_id'] as String?,
-      campaignId: data['clix_campaign_id'] as String?,
-      userId: data['clix_user_id'] as String?,
-      deviceId: data['clix_device_id'] as String?,
-      trackingId: data['clix_tracking_id'] as String?,
-      landingUrl: data['clix_landing_url'] as String?,
-      imageUrl: data['clix_image_url'] as String?,
-      customProperties: customProps,
-    );
-  }
 
   /// Create payload from platform-specific map data
   factory ClixPushNotificationPayload.fromMap(Map<String, dynamic> data) {

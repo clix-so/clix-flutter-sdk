@@ -6,8 +6,8 @@ import '../models/clix_push_notification_payload.dart';
 import '../utils/logger.dart';
 
 class PlatformService {
-  static const MethodChannel _methodChannel = MethodChannel('clix_flutter_sdk');
-  static const EventChannel _eventChannel = EventChannel('clix_flutter_sdk/events');
+  static const MethodChannel _methodChannel = MethodChannel('clix_flutter');
+  static const EventChannel _eventChannel = EventChannel('clix_flutter/events');
 
   static Stream<Map<String, dynamic>>? _eventStream;
   static StreamSubscription<Map<String, dynamic>>? _eventSubscription;
@@ -21,8 +21,8 @@ class PlatformService {
   static final StreamController<ClixPushNotificationPayload> _notificationTappedController = 
       StreamController<ClixPushNotificationPayload>.broadcast();
 
-  /// Initialize platform service and start listening to events
-  static Future<void> initialize() async {
+  /// Start listening to platform events
+  static Future<void> startListening() async {
     if (kIsWeb) {
       ClixLogger.warning('Platform service not supported on web');
       return;
@@ -32,9 +32,9 @@ class PlatformService {
       _eventStream = _eventChannel.receiveBroadcastStream().cast<Map<String, dynamic>>();
       _eventSubscription = _eventStream!.listen(_handlePlatformEvent, onError: _handlePlatformError);
 
-      ClixLogger.debug('Platform service initialized successfully');
+      ClixLogger.debug('Platform service listening started');
     } catch (e, stackTrace) {
-      ClixLogger.error('Failed to initialize platform service', e, stackTrace);
+      ClixLogger.error('Failed to start platform listening', e, stackTrace);
     }
   }
 
@@ -66,12 +66,163 @@ class PlatformService {
 
   // MARK: - Platform Methods
 
+  /// Initialize the platform service
+  static Future<bool> initialize({
+    required String projectId,
+    required String apiKey,
+  }) async {
+    if (kIsWeb) return false;
+
+    try {
+      final Map<String, dynamic> result = await _methodChannel.invokeMethod('initialize', {
+        'projectId': projectId,
+        'apiKey': apiKey,
+      });
+      ClixLogger.debug('Platform initialized: $result');
+      return result['success'] ?? false;
+    } catch (e, stackTrace) {
+      ClixLogger.error('Failed to initialize platform service', e, stackTrace);
+      return false;
+    }
+  }
+
+  /// Set user ID
+  static Future<bool> setUserId(String userId) async {
+    if (kIsWeb) return false;
+
+    try {
+      final bool result = await _methodChannel.invokeMethod('setUserId', {'userId': userId});
+      ClixLogger.debug('Set user ID result: $result');
+      return result;
+    } catch (e, stackTrace) {
+      ClixLogger.error('Failed to set user ID', e, stackTrace);
+      return false;
+    }
+  }
+
+  /// Remove user ID
+  static Future<bool> removeUserId() async {
+    if (kIsWeb) return false;
+
+    try {
+      final bool result = await _methodChannel.invokeMethod('removeUserId');
+      ClixLogger.debug('Remove user ID result: $result');
+      return result;
+    } catch (e, stackTrace) {
+      ClixLogger.error('Failed to remove user ID', e, stackTrace);
+      return false;
+    }
+  }
+
+  /// Set user property
+  static Future<bool> setUserProperty(String key, dynamic value) async {
+    if (kIsWeb) return false;
+
+    try {
+      final bool result = await _methodChannel.invokeMethod('setUserProperty', {
+        'key': key,
+        'value': value,
+      });
+      ClixLogger.debug('Set user property result: $result');
+      return result;
+    } catch (e, stackTrace) {
+      ClixLogger.error('Failed to set user property', e, stackTrace);
+      return false;
+    }
+  }
+
+  /// Set user properties
+  static Future<bool> setUserProperties(Map<String, dynamic> properties) async {
+    if (kIsWeb) return false;
+
+    try {
+      final bool result = await _methodChannel.invokeMethod('setUserProperties', {
+        'properties': properties,
+      });
+      ClixLogger.debug('Set user properties result: $result');
+      return result;
+    } catch (e, stackTrace) {
+      ClixLogger.error('Failed to set user properties', e, stackTrace);
+      return false;
+    }
+  }
+
+  /// Remove user property
+  static Future<bool> removeUserProperty(String key) async {
+    if (kIsWeb) return false;
+
+    try {
+      final bool result = await _methodChannel.invokeMethod('removeUserProperty', {'key': key});
+      ClixLogger.debug('Remove user property result: $result');
+      return result;
+    } catch (e, stackTrace) {
+      ClixLogger.error('Failed to remove user property', e, stackTrace);
+      return false;
+    }
+  }
+
+  /// Remove user properties
+  static Future<bool> removeUserProperties(List<String> keys) async {
+    if (kIsWeb) return false;
+
+    try {
+      final bool result = await _methodChannel.invokeMethod('removeUserProperties', {'keys': keys});
+      ClixLogger.debug('Remove user properties result: $result');
+      return result;
+    } catch (e, stackTrace) {
+      ClixLogger.error('Failed to remove user properties', e, stackTrace);
+      return false;
+    }
+  }
+
+  /// Get device ID
+  static Future<String?> getDeviceId() async {
+    if (kIsWeb) return null;
+
+    try {
+      final String? deviceId = await _methodChannel.invokeMethod('getDeviceId');
+      ClixLogger.debug('Device ID retrieved: $deviceId');
+      return deviceId;
+    } catch (e, stackTrace) {
+      ClixLogger.error('Failed to get device ID', e, stackTrace);
+      return null;
+    }
+  }
+
+  /// Get push token
+  static Future<String?> getPushToken() async {
+    if (kIsWeb) return null;
+
+    try {
+      final String? token = await _methodChannel.invokeMethod('getPushToken');
+      ClixLogger.debug('Push token retrieved: ${token?.substring(0, 20)}...');
+      return token;
+    } catch (e, stackTrace) {
+      ClixLogger.error('Failed to get push token', e, stackTrace);
+      return null;
+    }
+  }
+
+  /// Set log level
+  static Future<bool> setLogLevel(int level) async {
+    if (kIsWeb) return false;
+
+    try {
+      final bool result = await _methodChannel.invokeMethod('setLogLevel', {'level': level});
+      ClixLogger.debug('Set log level result: $result');
+      return result;
+    } catch (e, stackTrace) {
+      ClixLogger.error('Failed to set log level', e, stackTrace);
+      return false;
+    }
+  }
+
   /// Request notification permissions
   static Future<bool> requestNotificationPermissions() async {
     if (kIsWeb) return false;
 
     try {
-      final bool result = await _methodChannel.invokeMethod('requestNotificationPermissions');
+      final bool result = await _methodChannel.invokeMethod('requestPermissions');
       ClixLogger.debug('Notification permissions result: $result');
       return result;
     } catch (e, stackTrace) {

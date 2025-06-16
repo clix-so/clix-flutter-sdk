@@ -6,10 +6,10 @@
 
 #import "GeneratedPluginRegistrant.h"
 
-#if __has_include(<clix/ClixPlugin.h>)
-#import <clix/ClixPlugin.h>
+#if __has_include(<clix_flutter/ClixPlugin.h>)
+#import <clix_flutter/ClixPlugin.h>
 #else
-@import clix;
+@import clix_flutter;
 #endif
 
 #if __has_include(<device_info_plus/FPPDeviceInfoPlusPlugin.h>)

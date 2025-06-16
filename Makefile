@@ -35,8 +35,8 @@ help:
 build:
 	@echo "🔨 Building Clix Flutter SDK..."
 	@flutter packages get
-	@dart compile kernel lib/clix.dart -o build/clix.dill
-	@echo "✅ Build completed successfully"
+	@flutter analyze --no-pub --no-fatal-warnings lib/
+	@echo "✅ SDK build completed successfully"
 
 # Clean build artifacts and caches
 clean:
@@ -133,11 +133,13 @@ run-ios:
 # Build the Android version of the basic_app
 build-android:
 	@echo "🔨 Building Android version of basic_app..."
+	@cd samples/basic_app && flutter pub get
 	@cd samples/basic_app && flutter build apk
 	@echo "✅ Android build completed successfully"
 
 # Run the Android version of the basic_app in emulator
 run-android:
 	@echo "🚀 Running Android version of basic_app in emulator..."
+	@cd samples/basic_app && flutter pub get
 	@cd samples/basic_app && flutter run -d android
 	@echo "✅ Android app launched successfully"
