@@ -1,40 +1,41 @@
-# Miscellaneous
-*.class
-*.log
-*.pyc
-*.swp
+# Operating System Files
 .DS_Store
-.atom/
-.buildlog/
-.history
-.svn/
-migrate_working_dir/
+*.swp
 
-# IntelliJ related
+# Editor and IDE Files
+## IntelliJ related
 *.iml
 *.ipr
 *.iws
 .idea/
 
-# The .vscode folder contains launch configuration and tasks you configure in
-# VS Code which you may wish to be included in version control, so this line
-# is commented out by default.
+## VS Code
 #.vscode/
 
-# Flutter/Dart/Pub related
-# Libraries should not include pubspec.lock, per https://dart.dev/guides/libraries/private-files#pubspeclock.
-/pubspec.lock
-**/doc/api/
+## Atom
+.atom/
+.buildlog/
+.history
+.svn/
+
+# Dart/Flutter Related
+## Build and dependency files
 .dart_tool/
 .packages
+.pub/
+.pub-cache/
 build/
+pubspec.lock
+**/doc/api/
+
+## Flutter specific
 .flutter-plugins
 .flutter-plugins-dependencies
 .metadata
-.pub-cache/
-.pub/
+migrate_working_dir/
+lib/generated_plugin_registrant.dart
 
-# iOS related
+# iOS Related
 **/ios/Flutter/.last_build_id
 **/ios/Pods/
 **/ios/.symlinks/
@@ -43,7 +44,7 @@ build/
 **/ios/Runner.xcodeproj/xcuserdata/
 **/ios/DerivedData/
 
-# Android related  
+# Android Related
 **/android/.gradle/
 **/android/app/debug
 **/android/app/profile
@@ -54,16 +55,20 @@ build/
 **/android/gradlew.bat
 **/android/key.properties
 
-# Symbolication related
+# Miscellaneous
+*.class
+*.log
+*.pyc
+
+# Symbolication Related
 app.*.symbols
 
-# Obfuscation related
+# Obfuscation Related
 app.*.map.json
 
-# Web related
-lib/generated_plugin_registrant.dart
-
+# Firebase Configuration Files
 GoogleService-Info.plist
 google-services.json
 
+# Project Specific
 .claude
