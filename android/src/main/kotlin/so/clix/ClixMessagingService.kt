@@ -147,7 +147,10 @@ class ClixMessagingService : FirebaseMessagingService() {
         android.util.Log.d("ClixMessagingService", "Final notification data: $notificationData")
         android.util.Log.d("ClixMessagingService", "Final title: $title, body: $body, imageUrl: $imageUrl")
         
-        // Send notification received event to Flutter
+        // Send notification received event to Flutter with proper event name for tracking
+        pluginInstance?.sendEvent("PUSH_NOTIFICATION_RECEIVED", notificationData)
+        
+        // Also send the legacy foregroundNotification event for backward compatibility
         pluginInstance?.sendEvent("foregroundNotification", notificationData)
         
         // Show notification
@@ -176,17 +179,26 @@ class ClixMessagingService : FirebaseMessagingService() {
         val body = payload["body"]?.toString() ?: ""
         val messageId = payload["messageId"]?.toString() ?: ""
         val imageUrl = payload["imageUrl"]?.toString()
+        val landingUrl = payload["landingUrl"]?.toString()
         
-        // Create intent for notification tap
-        val intent = packageManager.getLaunchIntentForPackage(packageName)?.apply {
+        // Create intent for notification tap using NotificationTappedActivity
+        val intent = Intent(this, NotificationTappedActivity::class.java).apply {
             addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP or Intent.FLAG_ACTIVITY_SINGLE_TOP)
+            
             // Add notification data as extras
+            putExtra("messageId", messageId)
+            putExtra("landingUrl", landingUrl)
+            
+            // Add all other payload data
             payload.forEach { (key, value) ->
-                putExtra(key, value.toString())
+                if (key != "messageId" && key != "landingUrl") {
+                    putExtra(key, value.toString())
+                }
             }
+            
             // Add special marker to identify notification tap
             putExtra("clix_notification_tapped", true)
-            putExtra("clix_message_id", messageId)
+            putExtra("event_name", "PUSH_NOTIFICATION_TAPPED")
         }
         
         val pendingIntent = PendingIntent.getActivity(

@@ -157,7 +157,13 @@ class ClixPlugin: FlutterPlugin, MethodCallHandler, ActivityAware, EventChannel.
                     }
                 }
                 
-                // Send notification tapped event to Flutter
+                // Get event name from intent extras, default to PUSH_NOTIFICATION_TAPPED if not found
+                val eventName = launchIntent.getStringExtra("event_name") ?: "PUSH_NOTIFICATION_TAPPED"
+                
+                // Send notification tapped event to Flutter with the proper event name for tracking
+                sendEvent(eventName, notificationData)
+                
+                // Also send the legacy notificationTapped event for backward compatibility
                 sendEvent("notificationTapped", notificationData)
                 
                 // Clear the intent extras to avoid processing the same notification multiple times
