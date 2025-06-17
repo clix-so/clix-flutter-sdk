@@ -1,0 +1,13 @@
+targets:
+  $default:
+    builders:
+      json_serializable:
+        options:
+          # JSON 키 네이밍을 snake_case로 설정
+          field_rename: snake
+          # nullable 필드 지원
+          any_map: true
+          # 체크 연산자를 사용하지 않음
+          checked: false
+          # 명시적 to/from 메서드 생성
+          explicit_to_json: true 

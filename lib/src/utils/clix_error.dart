@@ -2,22 +2,22 @@
 class ClixError implements Exception {
   /// Error code for categorization
   final String code;
-  
+
   /// Human-readable error message
   final String message;
-  
+
   /// Additional error details
   final dynamic details;
-  
+
   /// Context where the error occurred
   final String? context;
-  
+
   /// Timestamp when error occurred
   final DateTime timestamp;
-  
+
   /// Whether this error is recoverable
   final bool recoverable;
-  
+
   ClixError({
     required this.code,
     required this.message,
@@ -47,52 +47,52 @@ class ClixError implements Exception {
 
   // Predefined error types
   static ClixError get notInitialized => ClixError.now(
-    code: 'NOT_INITIALIZED',
-    message: 'Clix SDK has not been initialized',
-  );
+        code: 'NOT_INITIALIZED',
+        message: 'Clix SDK has not been initialized',
+      );
 
   static ClixError get invalidConfiguration => ClixError.now(
-    code: 'INVALID_CONFIGURATION',
-    message: 'Invalid configuration provided',
-  );
+        code: 'INVALID_CONFIGURATION',
+        message: 'Invalid configuration provided',
+      );
 
   static ClixError get invalidURL => ClixError.now(
-    code: 'INVALID_URL',
-    message: 'Invalid URL',
-  );
+        code: 'INVALID_URL',
+        message: 'Invalid URL',
+      );
 
   static ClixError get invalidResponse => ClixError.now(
-    code: 'INVALID_RESPONSE',
-    message: 'Invalid response from server',
-    recoverable: true,
-  );
+        code: 'INVALID_RESPONSE',
+        message: 'Invalid response from server',
+        recoverable: true,
+      );
 
   static ClixError get networkError => ClixError.now(
-    code: 'NETWORK_ERROR',
-    message: 'Network request failed',
-    recoverable: true,
-  );
+        code: 'NETWORK_ERROR',
+        message: 'Network request failed',
+        recoverable: true,
+      );
 
   static ClixError get encodingError => ClixError.now(
-    code: 'ENCODING_ERROR',
-    message: 'Failed to encode request data',
-  );
+        code: 'ENCODING_ERROR',
+        message: 'Failed to encode request data',
+      );
 
   static ClixError get decodingError => ClixError.now(
-    code: 'DECODING_ERROR',
-    message: 'Failed to decode response data',
-  );
+        code: 'DECODING_ERROR',
+        message: 'Failed to decode response data',
+      );
 
   static ClixError get timeoutError => ClixError.now(
-    code: 'TIMEOUT_ERROR',
-    message: 'Request timed out',
-    recoverable: true,
-  );
+        code: 'TIMEOUT_ERROR',
+        message: 'Request timed out',
+        recoverable: true,
+      );
 
   static ClixError get unknownError => ClixError.now(
-    code: 'UNKNOWN_ERROR',
-    message: 'Unknown error occurred',
-  );
+        code: 'UNKNOWN_ERROR',
+        message: 'Unknown error occurred',
+      );
 
   /// Convert to map for serialization
   Map<String, dynamic> toMap() {
@@ -113,9 +113,9 @@ class ClixError implements Exception {
       message: map['message'] ?? 'Unknown error occurred',
       details: map['details'],
       context: map['context'],
-      timestamp: map['timestamp'] != null 
-        ? DateTime.parse(map['timestamp'])
-        : DateTime.now(),
+      timestamp: map['timestamp'] != null
+          ? DateTime.parse(map['timestamp'])
+          : DateTime.now(),
       recoverable: map['recoverable'] ?? false,
     );
   }

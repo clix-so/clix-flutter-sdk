@@ -13,7 +13,7 @@ class ClixLogger {
   static final List<Map<String, dynamic>> _logBuffer = [];
   static const int _maxBufferSize = 100;
   static void Function(Map<String, dynamic> logEntry)? _customLogHandler;
-  
+
   /// Initialize the logger with advanced options
   static Future<void> initialize({
     ClixLogLevel logLevel = ClixLogLevel.info,
@@ -27,14 +27,14 @@ class ClixLogger {
     _enableRemoteLogging = enableRemoteLogging;
     _logFilePath = logFilePath;
     _customLogHandler = customLogHandler;
-    
+
     if (_enableFileLogging && _logFilePath != null) {
       await _initializeFileLogging();
     }
-    
+
     info('Clix Logger initialized with level: ${logLevel.name}');
   }
-  
+
   /// Set the current log level
   static void setLogLevel(ClixLogLevel level) {
     _currentLogLevel = level;
@@ -49,24 +49,26 @@ class ClixLogger {
   static void debug(String message, [Object? error, StackTrace? stackTrace]) {
     _log(ClixLogLevel.debug, message, error, stackTrace);
   }
-  
+
   /// Log info message
   static void info(String message, [Object? error, StackTrace? stackTrace]) {
     _log(ClixLogLevel.info, message, error, stackTrace);
   }
-  
+
   /// Log warning message
   static void warning(String message, [Object? error, StackTrace? stackTrace]) {
     _log(ClixLogLevel.warning, message, error, stackTrace);
   }
-  
+
   /// Log error message
   static void error(String message, [Object? error, StackTrace? stackTrace]) {
     _log(ClixLogLevel.error, message, error, stackTrace);
   }
-  
+
   /// Log performance metrics
-  static void performance(String operation, Duration duration, {
+  static void performance(
+    String operation,
+    Duration duration, {
     Map<String, dynamic>? metadata,
   }) {
     final perfData = {
@@ -74,7 +76,7 @@ class ClixLogger {
       'duration_ms': duration.inMilliseconds,
       'metadata': metadata,
     };
-    
+
     _log(
       ClixLogLevel.info,
       'Performance: $operation took ${duration.inMilliseconds}ms',
@@ -84,9 +86,11 @@ class ClixLogger {
       data: perfData,
     );
   }
-  
+
   /// Log network requests
-  static void network(String method, String url, {
+  static void network(
+    String method,
+    String url, {
     int? statusCode,
     Duration? duration,
     Map<String, String>? headers,
@@ -102,10 +106,11 @@ class ClixLogger {
       'request_body': requestBody,
       'response_body': responseBody,
     };
-    
+
     final statusText = statusCode != null ? ' [$statusCode]' : '';
-    final durationText = duration != null ? ' (${duration.inMilliseconds}ms)' : '';
-    
+    final durationText =
+        duration != null ? ' (${duration.inMilliseconds}ms)' : '';
+
     _log(
       ClixLogLevel.debug,
       'Network: $method $url$statusText$durationText',
@@ -115,7 +120,7 @@ class ClixLogger {
       data: networkData,
     );
   }
-  
+
   /// Log user events
   static void userEvent(String event, Map<String, dynamic>? properties) {
     _log(
@@ -130,7 +135,7 @@ class ClixLogger {
       },
     );
   }
-  
+
   /// Log push notification events
   static void pushNotification(String event, Map<String, dynamic>? payload) {
     _log(
@@ -145,7 +150,7 @@ class ClixLogger {
       },
     );
   }
-  
+
   /// Get recent logs for debugging
   static List<Map<String, dynamic>> getRecentLogs({int? limit}) {
     final logs = List<Map<String, dynamic>>.from(_logBuffer);
@@ -154,13 +159,13 @@ class ClixLogger {
     }
     return logs;
   }
-  
+
   /// Clear log buffer
   static void clearLogs() {
     _logBuffer.clear();
     debug('Log buffer cleared');
   }
-  
+
   /// Export logs as JSON string
   static String exportLogs() {
     return jsonEncode({
@@ -173,7 +178,7 @@ class ClixLogger {
       },
     });
   }
-  
+
   static void _log(
     ClixLogLevel level,
     String message,
@@ -183,7 +188,7 @@ class ClixLogger {
     Map<String, dynamic>? data,
   }) {
     if (!_currentLogLevel.shouldLog(level)) return;
-    
+
     final timestamp = DateTime.now();
     final logEntry = {
       'timestamp': timestamp.toIso8601String(),
@@ -194,30 +199,30 @@ class ClixLogger {
       'stack_trace': stackTrace?.toString(),
       'data': data,
     };
-    
+
     // Add to buffer
     _logBuffer.add(logEntry);
     if (_logBuffer.length > _maxBufferSize) {
       _logBuffer.removeAt(0);
     }
-    
+
     // Console logging
     _logToConsole(level, message, error, stackTrace);
-    
+
     // File logging
     if (_enableFileLogging) {
       _logToFile(logEntry);
     }
-    
+
     // Remote logging
     if (_enableRemoteLogging) {
       _logToRemote(logEntry);
     }
-    
+
     // Custom handler
     _customLogHandler?.call(logEntry);
   }
-  
+
   static void _logToConsole(
     ClixLogLevel level,
     String message,
@@ -227,26 +232,29 @@ class ClixLogger {
     final prefix = '[CLIX] ${level.name.toUpperCase()}';
     final timestamp = DateTime.now().toIso8601String();
     final logMessage = '$timestamp $prefix: $message';
-    
+
+    // Use dart:developer log instead of print for better debugging support
+    dev.log(
+      message,
+      name: 'Clix',
+      error: error,
+      stackTrace: stackTrace,
+      level: _getLevelValue(level),
+    );
+
+    // For debug mode, also output formatted console messages
     if (kDebugMode) {
-      // Use dart:developer log for better debugging support
-      dev.log(
-        logMessage,
-        name: 'Clix',
-        error: error,
-        stackTrace: stackTrace,
-        level: _getLevelValue(level),
-      );
-    } else {
-      // Use print for release mode if needed
-      debugPrint(logMessage);
-      if (error != null) debugPrint('Error: $error');
+      debugPrint('[Clix] $logMessage');
+      if (error != null) debugPrint('[Clix] Error: $error');
+      if (stackTrace != null && level == ClixLogLevel.error) {
+        debugPrint('[Clix] Stack trace:\n$stackTrace');
+      }
     }
   }
-  
+
   static Future<void> _initializeFileLogging() async {
     if (_logFilePath == null) return;
-    
+
     try {
       final file = File(_logFilePath!);
       if (!await file.exists()) {
@@ -257,10 +265,10 @@ class ClixLogger {
       error('Failed to initialize file logging: $e');
     }
   }
-  
+
   static void _logToFile(Map<String, dynamic> logEntry) {
     if (_logFilePath == null) return;
-    
+
     try {
       final file = File(_logFilePath!);
       final logLine = '${jsonEncode(logEntry)}\n';
@@ -268,17 +276,17 @@ class ClixLogger {
     } catch (e) {
       // Avoid infinite recursion by not logging this error
       if (kDebugMode) {
-        print('Failed to write to log file: $e');
+        dev.log('Failed to write to log file: $e', name: 'Clix');
       }
     }
   }
-  
+
   static void _logToRemote(Map<String, dynamic> logEntry) {
     // Implement remote logging here
     // This could send logs to a centralized logging service
     // For now, just store in buffer for later transmission
   }
-  
+
   static int _getLevelValue(ClixLogLevel level) {
     switch (level) {
       case ClixLogLevel.verbose:
@@ -300,12 +308,12 @@ class ClixLogger {
 /// Performance measurement utility
 class ClixPerformanceLogger {
   static final Map<String, DateTime> _startTimes = {};
-  
+
   /// Start measuring performance for an operation
   static void start(String operation) {
     _startTimes[operation] = DateTime.now();
   }
-  
+
   /// End measuring and log performance
   static void end(String operation, {Map<String, dynamic>? metadata}) {
     final startTime = _startTimes.remove(operation);
@@ -314,9 +322,11 @@ class ClixPerformanceLogger {
       ClixLogger.performance(operation, duration, metadata: metadata);
     }
   }
-  
+
   /// Measure and log a synchronous operation
-  static T measure<T>(String operation, T Function() fn, {
+  static T measure<T>(
+    String operation,
+    T Function() fn, {
     Map<String, dynamic>? metadata,
   }) {
     final startTime = DateTime.now();
@@ -334,9 +344,11 @@ class ClixPerformanceLogger {
       rethrow;
     }
   }
-  
+
   /// Measure and log an asynchronous operation
-  static Future<T> measureAsync<T>(String operation, Future<T> Function() fn, {
+  static Future<T> measureAsync<T>(
+    String operation,
+    Future<T> Function() fn, {
     Map<String, dynamic>? metadata,
   }) async {
     final startTime = DateTime.now();

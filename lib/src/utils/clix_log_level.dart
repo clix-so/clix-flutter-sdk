@@ -7,7 +7,7 @@ enum ClixLogLevel {
   none(5);
 
   const ClixLogLevel(this.level);
-  
+
   final int level;
 
   bool operator >=(ClixLogLevel other) => level >= other.level;

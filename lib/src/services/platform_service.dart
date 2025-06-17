@@ -4,6 +4,7 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
 import '../models/clix_push_notification_payload.dart';
 import '../utils/logger.dart';
+import 'storage_service.dart';
 
 class PlatformService {
   static const MethodChannel _methodChannel = MethodChannel('clix_flutter');
@@ -13,12 +14,16 @@ class PlatformService {
   static StreamSubscription<Map<String, dynamic>>? _eventSubscription;
 
   // Event controllers for different types of platform events
-  static final StreamController<String> _tokenController = StreamController<String>.broadcast();
-  static final StreamController<ClixPushNotificationPayload> _foregroundNotificationController = 
+  static final StreamController<String> _tokenController =
+      StreamController<String>.broadcast();
+  static final StreamController<ClixPushNotificationPayload>
+      _foregroundNotificationController =
       StreamController<ClixPushNotificationPayload>.broadcast();
-  static final StreamController<ClixPushNotificationPayload> _backgroundNotificationController = 
+  static final StreamController<ClixPushNotificationPayload>
+      _backgroundNotificationController =
       StreamController<ClixPushNotificationPayload>.broadcast();
-  static final StreamController<ClixPushNotificationPayload> _notificationTappedController = 
+  static final StreamController<ClixPushNotificationPayload>
+      _notificationTappedController =
       StreamController<ClixPushNotificationPayload>.broadcast();
 
   /// Start listening to platform events
@@ -29,8 +34,10 @@ class PlatformService {
     }
 
     try {
-      _eventStream = _eventChannel.receiveBroadcastStream().cast<Map<String, dynamic>>();
-      _eventSubscription = _eventStream!.listen(_handlePlatformEvent, onError: _handlePlatformError);
+      _eventStream =
+          _eventChannel.receiveBroadcastStream().cast<Map<String, dynamic>>();
+      _eventSubscription = _eventStream!
+          .listen(_handlePlatformEvent, onError: _handlePlatformError);
 
       ClixLogger.debug('Platform service listening started');
     } catch (e, stackTrace) {
@@ -53,15 +60,15 @@ class PlatformService {
   static Stream<String> get onTokenRefresh => _tokenController.stream;
 
   /// Stream of notifications received in foreground
-  static Stream<ClixPushNotificationPayload> get onForegroundNotification => 
+  static Stream<ClixPushNotificationPayload> get onForegroundNotification =>
       _foregroundNotificationController.stream;
 
   /// Stream of notifications received in background
-  static Stream<ClixPushNotificationPayload> get onBackgroundNotification => 
+  static Stream<ClixPushNotificationPayload> get onBackgroundNotification =>
       _backgroundNotificationController.stream;
 
   /// Stream of notification taps
-  static Stream<ClixPushNotificationPayload> get onNotificationTapped => 
+  static Stream<ClixPushNotificationPayload> get onNotificationTapped =>
       _notificationTappedController.stream;
 
   // MARK: - Platform Methods
@@ -74,12 +81,14 @@ class PlatformService {
     if (kIsWeb) return false;
 
     try {
-      final Map<String, dynamic> result = await _methodChannel.invokeMethod('initialize', {
-        'projectId': projectId,
-        'apiKey': apiKey,
-      });
-      ClixLogger.debug('Platform initialized: $result');
-      return result['success'] ?? false;
+      // Store configuration in Dart-side storage
+      await StorageService.setProjectId(projectId);
+      await StorageService.setApiKey(apiKey);
+
+      // Platform initialization is now handled in Dart
+      // Native side only provides device-specific functionality
+      ClixLogger.debug('Platform initialized with projectId: $projectId');
+      return true;
     } catch (e, stackTrace) {
       ClixLogger.error('Failed to initialize platform service', e, stackTrace);
       return false;
@@ -91,9 +100,10 @@ class PlatformService {
     if (kIsWeb) return false;
 
     try {
-      final bool result = await _methodChannel.invokeMethod('setUserId', {'userId': userId});
-      ClixLogger.debug('Set user ID result: $result');
-      return result;
+      // Store user ID in Dart-side storage
+      await StorageService.setUserId(userId);
+      ClixLogger.debug('User ID set: $userId');
+      return true;
     } catch (e, stackTrace) {
       ClixLogger.error('Failed to set user ID', e, stackTrace);
       return false;
@@ -105,9 +115,10 @@ class PlatformService {
     if (kIsWeb) return false;
 
     try {
-      final bool result = await _methodChannel.invokeMethod('removeUserId');
-      ClixLogger.debug('Remove user ID result: $result');
-      return result;
+      // Remove user ID from Dart-side storage
+      await StorageService.removeUserId();
+      ClixLogger.debug('User ID removed');
+      return true;
     } catch (e, stackTrace) {
       ClixLogger.error('Failed to remove user ID', e, stackTrace);
       return false;
@@ -119,12 +130,10 @@ class PlatformService {
     if (kIsWeb) return false;
 
     try {
-      final bool result = await _methodChannel.invokeMethod('setUserProperty', {
-        'key': key,
-        'value': value,
-      });
-      ClixLogger.debug('Set user property result: $result');
-      return result;
+      // Store user property in Dart-side storage
+      await StorageService.setUserProperty(key, value);
+      ClixLogger.debug('User property set: $key = $value');
+      return true;
     } catch (e, stackTrace) {
       ClixLogger.error('Failed to set user property', e, stackTrace);
       return false;
@@ -136,11 +145,11 @@ class PlatformService {
     if (kIsWeb) return false;
 
     try {
-      final bool result = await _methodChannel.invokeMethod('setUserProperties', {
-        'properties': properties,
-      });
-      ClixLogger.debug('Set user properties result: $result');
-      return result;
+      // Store user properties in Dart-side storage
+      await StorageService.setUserProperties(properties);
+      ClixLogger.debug(
+          'User properties set: ${properties.keys.length} properties');
+      return true;
     } catch (e, stackTrace) {
       ClixLogger.error('Failed to set user properties', e, stackTrace);
       return false;
@@ -152,9 +161,10 @@ class PlatformService {
     if (kIsWeb) return false;
 
     try {
-      final bool result = await _methodChannel.invokeMethod('removeUserProperty', {'key': key});
-      ClixLogger.debug('Remove user property result: $result');
-      return result;
+      // Remove user property from Dart-side storage
+      await StorageService.removeUserProperty(key);
+      ClixLogger.debug('User property removed: $key');
+      return true;
     } catch (e, stackTrace) {
       ClixLogger.error('Failed to remove user property', e, stackTrace);
       return false;
@@ -166,9 +176,10 @@ class PlatformService {
     if (kIsWeb) return false;
 
     try {
-      final bool result = await _methodChannel.invokeMethod('removeUserProperties', {'keys': keys});
-      ClixLogger.debug('Remove user properties result: $result');
-      return result;
+      // Remove user properties from Dart-side storage
+      await StorageService.removeUserProperties(keys);
+      ClixLogger.debug('User properties removed: ${keys.length} properties');
+      return true;
     } catch (e, stackTrace) {
       ClixLogger.error('Failed to remove user properties', e, stackTrace);
       return false;
@@ -208,9 +219,10 @@ class PlatformService {
     if (kIsWeb) return false;
 
     try {
-      final bool result = await _methodChannel.invokeMethod('setLogLevel', {'level': level});
-      ClixLogger.debug('Set log level result: $result');
-      return result;
+      // Store log level in Dart-side storage
+      await StorageService.setLogLevel(level);
+      ClixLogger.debug('Log level set: $level');
+      return true;
     } catch (e, stackTrace) {
       ClixLogger.error('Failed to set log level', e, stackTrace);
       return false;
@@ -222,11 +234,13 @@ class PlatformService {
     if (kIsWeb) return false;
 
     try {
-      final bool result = await _methodChannel.invokeMethod('requestPermissions');
+      final bool result =
+          await _methodChannel.invokeMethod('requestPermissions');
       ClixLogger.debug('Notification permissions result: $result');
       return result;
     } catch (e, stackTrace) {
-      ClixLogger.error('Failed to request notification permissions', e, stackTrace);
+      ClixLogger.error(
+          'Failed to request notification permissions', e, stackTrace);
       return false;
     }
   }
@@ -236,9 +250,18 @@ class PlatformService {
     if (kIsWeb) return null;
 
     try {
-      final Map<String, dynamic> result = await _methodChannel.invokeMethod('getNotificationSettings');
-      ClixLogger.debug('Notification settings: $result');
-      return result;
+      final result = await _methodChannel
+          .invokeMethod<Map<Object?, Object?>>('getNotificationSettings');
+
+      if (result == null) {
+        ClixLogger.warning('Notification settings returned null');
+        return null;
+      }
+
+      final Map<String, dynamic> typedResult =
+          Map<String, dynamic>.from(result);
+      ClixLogger.debug('Notification settings: $typedResult');
+      return typedResult;
     } catch (e, stackTrace) {
       ClixLogger.error('Failed to get notification settings', e, stackTrace);
       return null;
@@ -278,11 +301,13 @@ class PlatformService {
     if (kIsWeb) return false;
 
     try {
-      await _methodChannel.invokeMethod('unsubscribeFromTopic', {'topic': topic});
+      await _methodChannel
+          .invokeMethod('unsubscribeFromTopic', {'topic': topic});
       ClixLogger.debug('Unsubscribed from topic: $topic');
       return true;
     } catch (e, stackTrace) {
-      ClixLogger.error('Failed to unsubscribe from topic: $topic', e, stackTrace);
+      ClixLogger.error(
+          'Failed to unsubscribe from topic: $topic', e, stackTrace);
       return false;
     }
   }
@@ -292,7 +317,8 @@ class PlatformService {
     if (kIsWeb || !Platform.isIOS) return false;
 
     try {
-      await _methodChannel.invokeMethod('setNotificationBadge', {'count': count});
+      await _methodChannel
+          .invokeMethod('setNotificationBadge', {'count': count});
       ClixLogger.debug('Notification badge set to: $count');
       return true;
     } catch (e, stackTrace) {
