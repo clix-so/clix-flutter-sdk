@@ -1,10 +1,13 @@
 import 'dart:async';
 import 'dart:io';
+import 'package:device_info_plus/device_info_plus.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
+import '../utils/uuid_generator.dart';
 import '../models/clix_push_notification_payload.dart';
 import '../utils/logger.dart';
 import 'storage_service.dart';
+import 'fcm_service.dart';
 
 class PlatformService {
   static const MethodChannel _methodChannel = MethodChannel('clix_flutter');
@@ -34,6 +37,13 @@ class PlatformService {
     }
 
     try {
+      // Initialize FCM service first
+      await FCMService.initialize();
+
+      // Forward FCM streams to platform service streams
+      _forwardFCMStreams();
+
+      // Keep legacy event channel for non-FCM events (if needed)
       _eventStream =
           _eventChannel.receiveBroadcastStream().cast<Map<String, dynamic>>();
       _eventSubscription = _eventStream!
@@ -45,9 +55,31 @@ class PlatformService {
     }
   }
 
+  /// Forward FCM service streams to platform service streams
+  static void _forwardFCMStreams() {
+    // Forward token updates
+    FCMService.onTokenRefresh.listen((token) {
+      _tokenController.add(token);
+    });
+
+    // Forward notification events
+    FCMService.onForegroundNotification.listen((payload) {
+      _foregroundNotificationController.add(payload);
+    });
+
+    FCMService.onBackgroundNotification.listen((payload) {
+      _backgroundNotificationController.add(payload);
+    });
+
+    FCMService.onNotificationTapped.listen((payload) {
+      _notificationTappedController.add(payload);
+    });
+  }
+
   /// Dispose platform service
   static void dispose() {
     _eventSubscription?.cancel();
+    FCMService.dispose();
     _tokenController.close();
     _foregroundNotificationController.close();
     _backgroundNotificationController.close();
@@ -186,17 +218,62 @@ class PlatformService {
     }
   }
 
-  /// Get device ID
+  /// Get device ID using device_info_plus (replaces native implementation)
   static Future<String?> getDeviceId() async {
-    if (kIsWeb) return null;
-
     try {
-      final String? deviceId = await _methodChannel.invokeMethod('getDeviceId');
-      ClixLogger.debug('Device ID retrieved: $deviceId');
-      return deviceId;
+      if (kIsWeb) {
+        // For web, generate a consistent ID or use stored one
+        final storedId = await StorageService.getWebDeviceId();
+        if (storedId != null) return storedId;
+        
+        final webDeviceId = 'web_${UuidGenerator.generateV4()}';
+        await StorageService.setWebDeviceId(webDeviceId);
+        return webDeviceId;
+      }
+
+      final DeviceInfoPlugin deviceInfo = DeviceInfoPlugin();
+      
+      if (Platform.isAndroid) {
+        final AndroidDeviceInfo androidInfo = await deviceInfo.androidInfo;
+        final androidId = androidInfo.id;
+        
+        if (androidId.isNotEmpty && androidId != 'unknown') {
+          ClixLogger.debug('Device ID retrieved (Android): $androidId');
+          return androidId;
+        }
+        
+        // Fallback for Android
+        final fallbackId = '${androidInfo.manufacturer}_${androidInfo.model}_${androidInfo.device}'.replaceAll(' ', '_').toLowerCase();
+        ClixLogger.debug('Device ID retrieved (Android fallback): $fallbackId');
+        return fallbackId;
+        
+      } else if (Platform.isIOS) {
+        final IosDeviceInfo iosInfo = await deviceInfo.iosInfo;
+        final vendorId = iosInfo.identifierForVendor;
+        
+        if (vendorId != null && vendorId.isNotEmpty) {
+          ClixLogger.debug('Device ID retrieved (iOS): $vendorId');
+          return vendorId;
+        }
+        
+        // Fallback for iOS
+        final fallbackId = 'ios_${UuidGenerator.generateV4()}';
+        ClixLogger.debug('Device ID retrieved (iOS fallback): $fallbackId');
+        return fallbackId;
+        
+      } else {
+        // Other platforms
+        final platformId = '${Platform.operatingSystem}_${UuidGenerator.generateV4()}';
+        ClixLogger.debug('Device ID retrieved (${Platform.operatingSystem}): $platformId');
+        return platformId;
+      }
     } catch (e, stackTrace) {
       ClixLogger.error('Failed to get device ID', e, stackTrace);
-      return null;
+      
+      // Final fallback
+      final fallbackId = 'fallback_${UuidGenerator.generateV4()}';
+      ClixLogger.warning('Using fallback device ID: $fallbackId');
+      return fallbackId;
     }
   }
 
@@ -205,7 +282,8 @@ class PlatformService {
     if (kIsWeb) return null;
 
     try {
-      final String? token = await _methodChannel.invokeMethod('getPushToken');
+      // Use FCM service instead of native call
+      final String? token = await FCMService.getToken();
       ClixLogger.debug('Push token retrieved: ${token?.substring(0, 20)}...');
       return token;
     } catch (e, stackTrace) {
@@ -235,7 +313,7 @@ class PlatformService {
 
     try {
       final bool result =
-          await _methodChannel.invokeMethod('requestPermissions');
+          await _methodChannel.invokeMethod('requestNotificationPermissions');
       ClixLogger.debug('Notification permissions result: $result');
       return result;
     } catch (e, stackTrace) {
@@ -273,7 +351,8 @@ class PlatformService {
     if (kIsWeb) return null;
 
     try {
-      final String? token = await _methodChannel.invokeMethod('getFCMToken');
+      // Use FCM service instead of native call
+      final String? token = await FCMService.getToken();
       ClixLogger.debug('FCM token retrieved: ${token?.substring(0, 20)}...');
       return token;
     } catch (e, stackTrace) {
@@ -287,9 +366,8 @@ class PlatformService {
     if (kIsWeb) return false;
 
     try {
-      await _methodChannel.invokeMethod('subscribeToTopic', {'topic': topic});
-      ClixLogger.debug('Subscribed to topic: $topic');
-      return true;
+      // Use FCM service instead of native call
+      return await FCMService.subscribeToTopic(topic);
     } catch (e, stackTrace) {
       ClixLogger.error('Failed to subscribe to topic: $topic', e, stackTrace);
       return false;
@@ -301,10 +379,8 @@ class PlatformService {
     if (kIsWeb) return false;
 
     try {
-      await _methodChannel
-          .invokeMethod('unsubscribeFromTopic', {'topic': topic});
-      ClixLogger.debug('Unsubscribed from topic: $topic');
-      return true;
+      // Use FCM service instead of native call
+      return await FCMService.unsubscribeFromTopic(topic);
     } catch (e, stackTrace) {
       ClixLogger.error(
           'Failed to unsubscribe from topic: $topic', e, stackTrace);
@@ -317,10 +393,8 @@ class PlatformService {
     if (kIsWeb || !Platform.isIOS) return false;
 
     try {
-      await _methodChannel
-          .invokeMethod('setNotificationBadge', {'count': count});
-      ClixLogger.debug('Notification badge set to: $count');
-      return true;
+      // Use FCM service instead of native call
+      return await FCMService.setNotificationBadge(count);
     } catch (e, stackTrace) {
       ClixLogger.error('Failed to set notification badge', e, stackTrace);
       return false;
@@ -332,9 +406,9 @@ class PlatformService {
     if (kIsWeb || !Platform.isIOS) return false;
 
     try {
-      await _methodChannel.invokeMethod('clearNotificationBadge');
+      final bool result = await _methodChannel.invokeMethod('clearNotificationBadge');
       ClixLogger.debug('Notification badge cleared');
-      return true;
+      return result;
     } catch (e, stackTrace) {
       ClixLogger.error('Failed to clear notification badge', e, stackTrace);
       return false;
@@ -355,16 +429,15 @@ class PlatformService {
     }
   }
 
-  /// Handle notification tap from platform
+  /// Handle notification tap - now handled entirely in Flutter via FCM service
+  /// This method is deprecated and kept for backward compatibility only
+  @Deprecated('Notification tap handling is now done in Flutter via FCM service')
   static Future<void> handleNotificationTap(Map<String, dynamic> data) async {
     if (kIsWeb) return;
 
-    try {
-      await _methodChannel.invokeMethod('handleNotificationTap', data);
-      ClixLogger.debug('Handled notification tap');
-    } catch (e, stackTrace) {
-      ClixLogger.error('Failed to handle notification tap', e, stackTrace);
-    }
+    // Notification tap handling is now done entirely in Flutter via FCM service
+    // This method is kept for backward compatibility but does nothing
+    ClixLogger.debug('Notification tap handled via FCM service (deprecated method called)');
   }
 
   // MARK: - Private Methods

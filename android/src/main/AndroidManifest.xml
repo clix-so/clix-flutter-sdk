@@ -14,13 +14,6 @@
       </intent-filter>
     </service>
     
-    <!-- Notification Tapped Activity for handling notification clicks -->
-    <activity
-        android:name=".NotificationTappedActivity"
-        android:exported="false"
-        android:theme="@style/Theme.AppCompat.NoActionBar"
-        android:launchMode="singleTop" />
-    
     <!-- Firebase metadata for default notification channel -->
     <meta-data
         android:name="com.google.firebase.messaging.default_notification_channel_id"

@@ -7,22 +7,14 @@ import 'package:flutter/material.dart';
 
 import 'clix_info.dart';
 
-// Background message handler (must be top-level function)
-@pragma('vm:entry-point')
-Future<void> _firebaseMessagingBackgroundHandler(RemoteMessage message) async {
-  await Firebase.initializeApp();
-  // Use debugPrint instead of print for production
-  debugPrint('Handling a background message: ${message.messageId}');
-}
-
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
   // Initialize Firebase
   await Firebase.initializeApp();
 
-  // Set up background message handler
-  FirebaseMessaging.onBackgroundMessage(_firebaseMessagingBackgroundHandler);
+  // Set up background message handler using FCM service
+  FirebaseMessaging.onBackgroundMessage(FCMService.backgroundMessageHandler);
 
   // Initialize Clix SDK with static method
   await Clix.initialize(const ClixConfig(

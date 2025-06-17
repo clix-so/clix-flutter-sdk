@@ -1,83 +1,117 @@
 import Flutter
 import UIKit
-#if canImport(FirebaseMessaging)
+import UserNotifications
+import Firebase
 import FirebaseMessaging
-#endif
 
-public class ClixPlugin: NSObject, FlutterPlugin {
-    private var channel: FlutterMethodChannel?
-    private var eventChannel: FlutterEventChannel?
-    private var eventSink: FlutterEventSink?
+public class ClixPlugin: NSObject, FlutterPlugin, ClixHostApi {
+    private var flutterApi: ClixFlutterApi?
+    
+    // Notification handling
+    private var pendingNotificationData: [String: Any]?
+    private var isAppLaunchedFromNotification = false
     
     // MARK: - Plugin Registration
     public static func register(with registrar: FlutterPluginRegistrar) {
-        let channel = FlutterMethodChannel(name: "clix_flutter", binaryMessenger: registrar.messenger())
-        let eventChannel = FlutterEventChannel(name: "clix_flutter/events", binaryMessenger: registrar.messenger())
+        let messenger = registrar.messenger()
+        let api = ClixPlugin()
         
-        let instance = ClixPlugin()
-        instance.channel = channel
-        instance.eventChannel = eventChannel
+        // Setup Pigeon APIs
+        ClixHostApiSetup.setUp(binaryMessenger: messenger, api: api)
+        api.flutterApi = ClixFlutterApi(binaryMessenger: messenger)
         
-        registrar.addMethodCallDelegate(instance, channel: channel)
-        eventChannel.setStreamHandler(instance)
+        // Register with AppDelegate for notification handling
+        ClixAppDelegate.registerPlugin(api)
     }
     
-    // MARK: - Method Call Handler
-    public func handle(_ call: FlutterMethodCall, result: @escaping FlutterResult) {
-        switch call.method {
-        // Only keep platform-specific methods that MUST be handled natively
-        case "getDeviceId":
-            getDeviceId(result: result)
-        case "getPushToken":
-            getPushToken(result: result)
-        default:
-            result(FlutterMethodNotImplemented)
-        }
-    }
+    // MARK: - ClixHostApi Implementation
     
-    // MARK: - Platform-specific methods that require native implementation
-    
-    private func getDeviceId(result: @escaping FlutterResult) {
-        let deviceId = UIDevice.current.identifierForVendor?.uuidString ?? UUID().uuidString
-        result(deviceId)
-    }
-    
-    private func getPushToken(result: @escaping FlutterResult) {
-        #if canImport(FirebaseMessaging)
+    func getFcmToken(completion: @escaping (Result<String, Error>) -> Void) {
         Messaging.messaging().token { token, error in
-            DispatchQueue.main.async {
-                if let error = error {
-                    result(FlutterError(code: "TOKEN_ERROR", message: "Failed to get push token", details: error.localizedDescription))
-                    return
-                }
-                result(token)
+            if let error = error {
+                completion(.failure(PigeonError(code: "token_error", message: "Failed to get FCM token: \(error.localizedDescription)", details: nil)))
+            } else if let token = token {
+                completion(.success(token))
+            } else {
+                completion(.failure(PigeonError(code: "token_error", message: "Token is nil", details: nil)))
             }
         }
-        #else
-        result(FlutterError(code: "TOKEN_ERROR", message: "Firebase Messaging not available", details: nil))
-        #endif
     }
     
-    // MARK: - Event handling
-    
-    func sendEvent(type: String, data: [String: Any]) {
-        let event: [String: Any] = [
-            "type": type,
-            "data": data
-        ]
-        eventSink?(event)
-    }
-}
-
-// MARK: - FlutterStreamHandler
-extension ClixPlugin: FlutterStreamHandler {
-    public func onListen(withArguments arguments: Any?, eventSink events: @escaping FlutterEventSink) -> FlutterError? {
-        self.eventSink = events
-        return nil
+    func getApnsToken(completion: @escaping (Result<String, Error>) -> Void) {
+        guard let token = Messaging.messaging().apnsToken else {
+            completion(.failure(PigeonError(code: "token_not_available", message: "APNS token not available", details: nil)))
+            return
+        }
+        
+        // Convert token data to hex string
+        let tokenString = token.map { String(format: "%02.2hhx", $0) }.joined()
+        completion(.success(tokenString))
     }
     
-    public func onCancel(withArguments arguments: Any?) -> FlutterError? {
-        self.eventSink = nil
-        return nil
+    func initializeFirebase(completion: @escaping (Result<Void, Error>) -> Void) {
+        // Firebase is initialized in the app's AppDelegate
+        // This is just a confirmation that it's ready
+        completion(.success(()))
+    }
+    
+    func requestPermissions(completion: @escaping (Result<Bool, Error>) -> Void) {
+        UNUserNotificationCenter.current().requestAuthorization(options: [.alert, .sound, .badge]) { granted, error in
+            if let error = error {
+                completion(.failure(PigeonError(code: "permission_error", message: error.localizedDescription, details: nil)))
+            } else {
+                completion(.success(granted))
+            }
+        }
+    }
+    
+    // MARK: - Internal methods for notifications
+    
+    func sendNotificationReceived(title: String, body: String, imageUrl: String?, deepLink: String?, data: [String: String]?) {
+        let notificationData = NotificationData(
+            title: title,
+            body: body,
+            imageUrl: imageUrl,
+            deepLink: deepLink,
+            data: data
+        )
+        flutterApi?.onNotificationReceived(notification: notificationData) { _ in }
+    }
+    
+    func sendNotificationOpened(title: String, body: String, imageUrl: String?, deepLink: String?, data: [String: String]?) {
+        let notificationData = NotificationData(
+            title: title,
+            body: body,
+            imageUrl: imageUrl,
+            deepLink: deepLink,
+            data: data
+        )
+        flutterApi?.onNotificationOpened(notification: notificationData) { _ in }
+    }
+    
+    func sendTokenRefresh(token: String) {
+        flutterApi?.onTokenRefresh(token: token) { _ in }
+    }
+    
+    // MARK: - Legacy methods for compatibility with ClixAppDelegate
+    
+    func handleNotificationReceived(data: [String: Any]) {
+        let title = data["title"] as? String ?? "Notification"
+        let body = data["body"] as? String ?? ""
+        let imageUrl = data["imageUrl"] as? String
+        let deepLink = data["deepLink"] as? String ?? data["landingUrl"] as? String
+        let stringData = data.compactMapValues { "\($0)" }
+        
+        sendNotificationReceived(title: title, body: body, imageUrl: imageUrl, deepLink: deepLink, data: stringData)
+    }
+    
+    func handleNotificationOpened(data: [String: Any]) {
+        let title = data["title"] as? String ?? "Notification"
+        let body = data["body"] as? String ?? ""
+        let imageUrl = data["imageUrl"] as? String
+        let deepLink = data["deepLink"] as? String ?? data["landingUrl"] as? String
+        let stringData = data.compactMapValues { "\($0)" }
+        
+        sendNotificationOpened(title: title, body: body, imageUrl: imageUrl, deepLink: deepLink, data: stringData)
     }
 }

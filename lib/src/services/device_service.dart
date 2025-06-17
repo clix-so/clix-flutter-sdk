@@ -1,4 +1,7 @@
-import 'package:uuid/uuid.dart';
+import 'dart:io';
+import 'package:device_info_plus/device_info_plus.dart';
+import 'package:flutter/foundation.dart';
+import '../utils/uuid_generator.dart';
 import '../models/clix_device.dart';
 import '../models/clix_user_property.dart';
 import '../utils/logger.dart';
@@ -40,7 +43,7 @@ class DeviceService {
       }
 
       // Generate new device ID
-      deviceId = _generateDeviceId();
+      deviceId = await _generateDeviceId();
       await _storage.setString(_deviceIdKey, deviceId);
 
       ClixLogger.info('Generated new device ID: $deviceId');
@@ -523,8 +526,52 @@ class DeviceService {
 
   // Private helper methods
 
-  String _generateDeviceId() {
-    const uuid = Uuid();
-    return uuid.v4();
+  /// Generate device ID using device_info_plus library
+  Future<String> _generateDeviceId() async {
+    try {
+      if (kIsWeb) {
+        // For web, use a UUID since we can't get device-specific info
+        return 'web_${UuidGenerator.generateV4()}';
+      }
+
+      final DeviceInfoPlugin deviceInfo = DeviceInfoPlugin();
+      
+      if (Platform.isAndroid) {
+        final AndroidDeviceInfo androidInfo = await deviceInfo.androidInfo;
+        
+        // Use Android ID as primary identifier
+        // If not available, fallback to a combination of device identifiers
+        final androidId = androidInfo.id;
+        if (androidId.isNotEmpty && androidId != 'unknown') {
+          return 'android_$androidId';
+        }
+        
+        // Fallback: create deterministic ID from device characteristics
+        final deviceSignature = '${androidInfo.manufacturer}_${androidInfo.model}_${androidInfo.device}'.replaceAll(' ', '_').toLowerCase();
+        return 'android_${deviceSignature}_${UuidGenerator.generateV4()}';
+        
+      } else if (Platform.isIOS) {
+        final IosDeviceInfo iosInfo = await deviceInfo.iosInfo;
+        
+        // Use identifierForVendor as primary identifier
+        final vendorId = iosInfo.identifierForVendor;
+        if (vendorId != null && vendorId.isNotEmpty) {
+          return 'ios_$vendorId';
+        }
+        
+        // Fallback: create deterministic ID from device characteristics  
+        final deviceSignature = '${iosInfo.model}_${iosInfo.systemVersion}'.replaceAll(' ', '_').toLowerCase();
+        return 'ios_${deviceSignature}_${UuidGenerator.generateV4()}';
+        
+      } else {
+        // Other platforms (Linux, macOS, Windows)
+        return '${Platform.operatingSystem}_${UuidGenerator.generateV4()}';
+      }
+    } catch (e) {
+      ClixLogger.warning('Failed to generate device-specific ID, using UUID fallback: $e');
+      
+      // Final fallback to UUID
+      return 'fallback_${UuidGenerator.generateV4()}';
+    }
   }
 }

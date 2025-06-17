@@ -249,4 +249,36 @@ class StorageService {
     await _ensureStaticInit();
     return _staticPrefs!.getInt('${_prefix}log_level');
   }
+
+  // Push token
+  static Future<void> setPushToken(String token) async {
+    await _ensureStaticInit();
+    await _staticPrefs!.setString('${_prefix}push_token', token);
+  }
+
+  static Future<String?> getPushToken() async {
+    await _ensureStaticInit();
+    return _staticPrefs!.getString('${_prefix}push_token');
+  }
+
+  static Future<void> removePushToken() async {
+    await _ensureStaticInit();
+    await _staticPrefs!.remove('${_prefix}push_token');
+  }
+
+  // Web device ID
+  static Future<void> setWebDeviceId(String deviceId) async {
+    await _ensureStaticInit();
+    await _staticPrefs!.setString('${_prefix}web_device_id', deviceId);
+  }
+
+  static Future<String?> getWebDeviceId() async {
+    await _ensureStaticInit();
+    return _staticPrefs!.getString('${_prefix}web_device_id');
+  }
+
+  static Future<void> removeWebDeviceId() async {
+    await _ensureStaticInit();
+    await _staticPrefs!.remove('${_prefix}web_device_id');
+  }
 }

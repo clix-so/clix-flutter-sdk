@@ -44,7 +44,7 @@ class ClixMessagingService : FirebaseMessagingService() {
         prefs.edit().putString("fcm_token", token).apply()
         
         // Send token refresh event to Flutter
-        pluginInstance?.sendEvent("tokenRefresh", mapOf("token" to token))
+        pluginInstance?.sendTokenRefresh(token)
     }
 
     override fun onMessageReceived(remoteMessage: RemoteMessage) {
@@ -147,11 +147,14 @@ class ClixMessagingService : FirebaseMessagingService() {
         android.util.Log.d("ClixMessagingService", "Final notification data: $notificationData")
         android.util.Log.d("ClixMessagingService", "Final title: $title, body: $body, imageUrl: $imageUrl")
         
-        // Send notification received event to Flutter with proper event name for tracking
-        pluginInstance?.sendEvent("PUSH_NOTIFICATION_RECEIVED", notificationData)
-        
-        // Also send the legacy foregroundNotification event for backward compatibility
-        pluginInstance?.sendEvent("foregroundNotification", notificationData)
+        // Send notification received event to Flutter
+        pluginInstance?.sendNotificationReceived(
+            title = title,
+            body = body,
+            imageUrl = imageUrl,
+            deepLink = landingUrl,
+            data = notificationData.mapKeys { it.key }.mapValues { it.value.toString() }
+        )
         
         // Show notification
         showNotification(notificationData)
@@ -181,24 +184,14 @@ class ClixMessagingService : FirebaseMessagingService() {
         val imageUrl = payload["imageUrl"]?.toString()
         val landingUrl = payload["landingUrl"]?.toString()
         
-        // Create intent for notification tap using NotificationTappedActivity
-        val intent = Intent(this, NotificationTappedActivity::class.java).apply {
+        // Create intent for notification tap - launch main activity
+        // Notification tap handling is now done in Flutter via FCM onMessageOpenedApp
+        val intent = packageManager.getLaunchIntentForPackage(packageName)?.apply {
             addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP or Intent.FLAG_ACTIVITY_SINGLE_TOP)
-            
-            // Add notification data as extras
+            // Add minimal data for Flutter to detect notification tap
+            putExtra("clix_notification_tapped", true)
             putExtra("messageId", messageId)
             putExtra("landingUrl", landingUrl)
-            
-            // Add all other payload data
-            payload.forEach { (key, value) ->
-                if (key != "messageId" && key != "landingUrl") {
-                    putExtra(key, value.toString())
-                }
-            }
-            
-            // Add special marker to identify notification tap
-            putExtra("clix_notification_tapped", true)
-            putExtra("event_name", "PUSH_NOTIFICATION_TAPPED")
         }
         
         val pendingIntent = PendingIntent.getActivity(

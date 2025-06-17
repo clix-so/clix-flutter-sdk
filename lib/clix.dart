@@ -14,6 +14,7 @@ export 'src/models/clix_user_property.dart';
 export 'src/services/clix_api_client.dart';
 export 'src/services/device_service.dart';
 export 'src/services/event_service.dart';
+export 'src/services/fcm_service.dart';
 export 'src/utils/http_client.dart';
 export 'src/services/notification_service.dart';
 export 'src/services/permission_service.dart';
