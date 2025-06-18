@@ -1,4 +1,4 @@
-import '../utils/clix_log_level.dart';
+import '../utils/logging/clix_log_level.dart';
 
 class ClixConfig {
   final String projectId;

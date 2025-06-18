@@ -2,20 +2,23 @@ import 'dart:convert';
 
 import '../core/clix_config.dart';
 import '../core/clix_version.dart';
-import '../utils/logger.dart';
-import '../utils/http_client.dart';
+import '../utils/logging/clix_logger.dart';
+import '../utils/http/http_client.dart';
+import '../utils/http/http_method.dart';
+import '../utils/http/http_request.dart';
+import '../utils/http/http_response.dart';
 
 /// Base API client for Clix services
 /// Handles authentication headers and base URL configuration
 class ClixAPIClient {
   final ClixConfig _config;
-  final ClixHttpClient _httpClient;
+  final HTTPClient _httpClient;
 
   ClixAPIClient({
     required ClixConfig config,
-    ClixHttpClient? httpClient,
+    HTTPClient? httpClient,
   })  : _config = config,
-        _httpClient = httpClient ?? ClixHttpClient();
+        _httpClient = httpClient ?? HTTPClient.shared;
 
   /// Get common headers for all API requests
   Map<String, String> get _commonHeaders {
@@ -46,7 +49,7 @@ class ClixAPIClient {
   }
 
   /// Perform GET request with authentication
-  Future<HttpResponse<T>> get<T>(
+  Future<HTTPResponse<T>> get<T>(
     String path, {
     Map<String, String>? headers,
     Map<String, dynamic>? queryParameters,
@@ -60,16 +63,19 @@ class ClixAPIClient {
 
     ClixLogger.debug('API GET $path');
 
-    return _httpClient.get<T>(
-      url,
+    final request = HTTPRequest(
+      method: HTTPMethod.get,
+      url: Uri.parse(url),
       headers: requestHeaders,
-      queryParameters: queryParameters,
-      fromJson: fromJson,
+      params: queryParameters,
     );
+
+    ClixLogger.debug('Making request to: $url');
+    return await _httpClient.request(request) as HTTPResponse<T>;
   }
 
   /// Perform POST request with authentication
-  Future<HttpResponse<T>> post<T>(
+  Future<HTTPResponse<T>> post<T>(
     String path, {
     Map<String, String>? headers,
     Map<String, dynamic>? queryParameters,
@@ -90,24 +96,25 @@ class ClixAPIClient {
       ClixLogger.debug('Query Parameters: $queryParameters');
     }
 
-    final response = await _httpClient.post<T>(
-      url,
+    final request = HTTPRequest(
+      method: HTTPMethod.post,
+      url: Uri.parse(url),
       headers: requestHeaders,
-      queryParameters: queryParameters,
+      params: queryParameters,
       body: body,
-      fromJson: fromJson,
     );
 
-    ClixLogger.debug('Response Status: ${response.statusCode}');
-    if (response.data != null) {
-      ClixLogger.debug('Response Body: ${jsonEncode(response.data)}');
-    }
+    ClixLogger.debug('Making request to: $url');
+    final response = await _httpClient.request(request);
 
-    return response;
+    ClixLogger.debug('Response Status: ${response.statusCode}');
+    ClixLogger.debug('Response Body: ${response.data}');
+
+    return response as HTTPResponse<T>;
   }
 
   /// Perform PUT request with authentication
-  Future<HttpResponse<T>> put<T>(
+  Future<HTTPResponse<T>> put<T>(
     String path, {
     Map<String, String>? headers,
     Map<String, dynamic>? queryParameters,
@@ -122,17 +129,20 @@ class ClixAPIClient {
 
     ClixLogger.debug('API PUT $path');
 
-    return _httpClient.put<T>(
-      url,
+    final request = HTTPRequest(
+      method: HTTPMethod.put,
+      url: Uri.parse(url),
       headers: requestHeaders,
-      queryParameters: queryParameters,
+      params: queryParameters,
       body: body,
-      fromJson: fromJson,
     );
+
+    ClixLogger.debug('Making request to: $url');
+    return await _httpClient.request(request) as HTTPResponse<T>;
   }
 
   /// Perform DELETE request with authentication
-  Future<HttpResponse<T>> delete<T>(
+  Future<HTTPResponse<T>> delete<T>(
     String path, {
     Map<String, String>? headers,
     Map<String, dynamic>? queryParameters,
@@ -146,16 +156,19 @@ class ClixAPIClient {
 
     ClixLogger.debug('API DELETE $path');
 
-    return _httpClient.delete<T>(
-      url,
+    final request = HTTPRequest(
+      method: HTTPMethod.delete,
+      url: Uri.parse(url),
       headers: requestHeaders,
-      queryParameters: queryParameters,
-      fromJson: fromJson,
+      params: queryParameters,
     );
+
+    ClixLogger.debug('Making request to: $url');
+    return await _httpClient.request(request) as HTTPResponse<T>;
   }
 
   /// Close the underlying HTTP client
   void close() {
-    _httpClient.close();
+    // HTTPClient.shared doesn't need to be closed
   }
 }

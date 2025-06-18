@@ -1,7 +1,7 @@
 import 'dart:async';
 import 'dart:convert';
 import 'package:shared_preferences/shared_preferences.dart';
-import '../utils/logger.dart';
+import '../utils/logging/clix_logger.dart';
 
 class StorageService {
   static const String _prefix = 'clix_';
@@ -15,8 +15,8 @@ class StorageService {
     try {
       _prefs = await SharedPreferences.getInstance();
       ClixLogger.debug('StorageService initialized');
-    } catch (e, stackTrace) {
-      ClixLogger.error('Failed to initialize StorageService', e, stackTrace);
+    } catch (e) {
+      ClixLogger.error('Failed to initialize StorageService', e);
       rethrow;
     }
   }
@@ -32,8 +32,8 @@ class StorageService {
     _ensureInitialized();
     try {
       await _prefs!.setString(_prefix + key, value);
-    } catch (e, stackTrace) {
-      ClixLogger.error('Failed to set string for key: $key', e, stackTrace);
+    } catch (e) {
+      ClixLogger.error('Failed to set string for key: $key', e);
       rethrow;
     }
   }
@@ -42,8 +42,8 @@ class StorageService {
     _ensureInitialized();
     try {
       return _prefs!.getString(_prefix + key);
-    } catch (e, stackTrace) {
-      ClixLogger.error('Failed to get string for key: $key', e, stackTrace);
+    } catch (e) {
+      ClixLogger.error('Failed to get string for key: $key', e);
       return null;
     }
   }
@@ -52,8 +52,8 @@ class StorageService {
     _ensureInitialized();
     try {
       await _prefs!.setBool(_prefix + key, value);
-    } catch (e, stackTrace) {
-      ClixLogger.error('Failed to set bool for key: $key', e, stackTrace);
+    } catch (e) {
+      ClixLogger.error('Failed to set bool for key: $key', e);
       rethrow;
     }
   }
@@ -62,8 +62,8 @@ class StorageService {
     _ensureInitialized();
     try {
       return _prefs!.getBool(_prefix + key);
-    } catch (e, stackTrace) {
-      ClixLogger.error('Failed to get bool for key: $key', e, stackTrace);
+    } catch (e) {
+      ClixLogger.error('Failed to get bool for key: $key', e);
       return null;
     }
   }
@@ -72,8 +72,8 @@ class StorageService {
     _ensureInitialized();
     try {
       await _prefs!.setInt(_prefix + key, value);
-    } catch (e, stackTrace) {
-      ClixLogger.error('Failed to set int for key: $key', e, stackTrace);
+    } catch (e) {
+      ClixLogger.error('Failed to set int for key: $key', e);
       rethrow;
     }
   }
@@ -82,8 +82,8 @@ class StorageService {
     _ensureInitialized();
     try {
       return _prefs!.getInt(_prefix + key);
-    } catch (e, stackTrace) {
-      ClixLogger.error('Failed to get int for key: $key', e, stackTrace);
+    } catch (e) {
+      ClixLogger.error('Failed to get int for key: $key', e);
       return null;
     }
   }
@@ -92,8 +92,8 @@ class StorageService {
     try {
       final jsonString = jsonEncode(value);
       await setString(key, jsonString);
-    } catch (e, stackTrace) {
-      ClixLogger.error('Failed to set JSON for key: $key', e, stackTrace);
+    } catch (e) {
+      ClixLogger.error('Failed to set JSON for key: $key', e);
       rethrow;
     }
   }
@@ -103,8 +103,8 @@ class StorageService {
       final jsonString = getString(key);
       if (jsonString == null) return null;
       return jsonDecode(jsonString) as Map<String, dynamic>;
-    } catch (e, stackTrace) {
-      ClixLogger.error('Failed to get JSON for key: $key', e, stackTrace);
+    } catch (e) {
+      ClixLogger.error('Failed to get JSON for key: $key', e);
       return null;
     }
   }
@@ -113,8 +113,8 @@ class StorageService {
     _ensureInitialized();
     try {
       await _prefs!.remove(_prefix + key);
-    } catch (e, stackTrace) {
-      ClixLogger.error('Failed to remove key: $key', e, stackTrace);
+    } catch (e) {
+      ClixLogger.error('Failed to remove key: $key', e);
       rethrow;
     }
   }
@@ -126,8 +126,8 @@ class StorageService {
       for (final key in keys) {
         await _prefs!.remove(key);
       }
-    } catch (e, stackTrace) {
-      ClixLogger.error('Failed to clear storage', e, stackTrace);
+    } catch (e) {
+      ClixLogger.error('Failed to clear storage', e);
       rethrow;
     }
   }

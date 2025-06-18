@@ -2,7 +2,7 @@ import 'dart:async';
 
 import 'package:clix_flutter/clix.dart';
 import 'package:firebase_core/firebase_core.dart';
-import 'package:firebase_messaging/firebase_messaging.dart';
+// Removed unused firebase_messaging import
 import 'package:flutter/material.dart';
 
 import 'clix_info.dart';
@@ -13,8 +13,7 @@ void main() async {
   // Initialize Firebase
   await Firebase.initializeApp();
 
-  // Set up background message handler using FCM service
-  FirebaseMessaging.onBackgroundMessage(FCMService.backgroundMessageHandler);
+  // Firebase background handler will be managed by Clix SDK internally
 
   // Initialize Clix SDK with static method
   await Clix.initialize(const ClixConfig(
@@ -146,13 +145,9 @@ class _HomePageState extends State<HomePage> {
   }
 
   void _setupNotificationStreams() {
-    _receivedSubscription = Clix.onNotificationReceived?.listen((payload) {
-      debugPrint('Notification received: ${payload.messageId}');
-    });
-
-    _tappedSubscription = Clix.onNotificationTapped?.listen((payload) {
-      debugPrint('Notification tapped: ${payload.messageId}');
-    });
+    // Note: Notification streams are handled internally by Firebase service
+    // Custom handling would be implemented through Firebase callbacks
+    debugPrint('Notification streams setup - handled internally by Clix SDK');
   }
 
   Future<void> _setUserId() async {

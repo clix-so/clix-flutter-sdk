@@ -1,25 +1,25 @@
-import '../utils/logger.dart';
+import '../utils/logging/clix_logger.dart';
 import '../utils/clix_error.dart';
 import 'storage_service.dart';
 
 /// Token service for managing push notification tokens
 class TokenService {
-  final StorageService _storage;
+  final StorageService _storageService;
 
   static const String _currentTokenKey = 'current_push_token';
   static const String _tokenHistoryKey = 'push_token_history';
   static const int _maxTokenHistory = 5;
 
   TokenService({
-    required StorageService storage,
-  }) : _storage = storage;
+    required StorageService storageService,
+  }) : _storageService = storageService;
 
   /// Get current push token
   String? getCurrentToken() {
     try {
-      return _storage.getString(_currentTokenKey);
-    } catch (e, stackTrace) {
-      ClixLogger.error('Failed to get current token', e, stackTrace);
+      return _storageService.getString(_currentTokenKey);
+    } catch (e) {
+      ClixLogger.error('Failed to get current token', e);
       return null;
     }
   }
@@ -36,7 +36,7 @@ class TokenService {
       }
 
       // Store new token
-      await _storage.setString(_currentTokenKey, token);
+      await _storageService.setString(_currentTokenKey, token);
 
       // Add to history if there was a previous token
       if (previousToken != null && previousToken.isNotEmpty) {
@@ -44,26 +44,22 @@ class TokenService {
       }
 
       ClixLogger.info('Push token updated');
-    } catch (e, stackTrace) {
-      ClixLogger.error('Failed to set current token', e, stackTrace);
-      throw ClixError.now(
-        code: 'SET_TOKEN_ERROR',
-        message: 'Failed to set push token: $e',
-        details: e,
-      );
+    } catch (e) {
+      ClixLogger.error('Failed to set current token', e);
+      throw ClixError.unknownErrorWithReason('Failed to set push token: $e');
     }
   }
 
   /// Get token history
   List<String> getTokenHistory() {
     try {
-      final historyJson = _storage.getJson(_tokenHistoryKey);
+      final historyJson = _storageService.getJson(_tokenHistoryKey);
       if (historyJson == null) return [];
 
       final historyList = historyJson['tokens'] as List<dynamic>? ?? [];
       return historyList.cast<String>();
-    } catch (e, stackTrace) {
-      ClixLogger.error('Failed to get token history', e, stackTrace);
+    } catch (e) {
+      ClixLogger.error('Failed to get token history', e);
       return [];
     }
   }
@@ -88,31 +84,23 @@ class TokenService {
         await _addTokenToHistory(currentToken);
       }
 
-      await _storage.remove(_currentTokenKey);
+      await _storageService.remove(_currentTokenKey);
       ClixLogger.info('Push token cleared');
-    } catch (e, stackTrace) {
-      ClixLogger.error('Failed to clear current token', e, stackTrace);
-      throw ClixError.now(
-        code: 'CLEAR_TOKEN_ERROR',
-        message: 'Failed to clear push token: $e',
-        details: e,
-      );
+    } catch (e) {
+      ClixLogger.error('Failed to clear current token', e);
+      throw ClixError.unknownErrorWithReason('Failed to clear push token: $e');
     }
   }
 
   /// Clear all tokens including history
   Future<void> clearAllTokens() async {
     try {
-      await _storage.remove(_currentTokenKey);
-      await _storage.remove(_tokenHistoryKey);
+      await _storageService.remove(_currentTokenKey);
+      await _storageService.remove(_tokenHistoryKey);
       ClixLogger.info('All push tokens cleared');
-    } catch (e, stackTrace) {
-      ClixLogger.error('Failed to clear all tokens', e, stackTrace);
-      throw ClixError.now(
-        code: 'CLEAR_ALL_TOKENS_ERROR',
-        message: 'Failed to clear all tokens: $e',
-        details: e,
-      );
+    } catch (e) {
+      ClixLogger.error('Failed to clear all tokens', e);
+      throw ClixError.unknownErrorWithReason('Failed to clear all tokens: $e');
     }
   }
 
@@ -152,7 +140,7 @@ class TokenService {
       'hasCurrentToken': hasCurrentToken(),
       'currentTokenLength': currentToken?.length ?? 0,
       'historyCount': history.length,
-      'lastUpdated': _storage.getString('${_currentTokenKey}_timestamp'),
+      'lastUpdated': _storageService.getString('${_currentTokenKey}_timestamp'),
     };
   }
 
@@ -176,17 +164,17 @@ class TokenService {
       }
 
       // Store updated history
-      await _storage.setJson(_tokenHistoryKey, {'tokens': history});
+      await _storageService.setJson(_tokenHistoryKey, {'tokens': history});
 
       // Store timestamp
-      await _storage.setString(
+      await _storageService.setString(
         '${_currentTokenKey}_timestamp',
         DateTime.now().toIso8601String(),
       );
 
       ClixLogger.debug('Token added to history (${history.length} total)');
-    } catch (e, stackTrace) {
-      ClixLogger.error('Failed to add token to history', e, stackTrace);
+    } catch (e) {
+      ClixLogger.error('Failed to add token to history', e);
       // Don't throw here as it's not critical
     }
   }

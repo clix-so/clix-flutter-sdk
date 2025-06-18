@@ -1,9 +1,9 @@
-import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:json_annotation/json_annotation.dart';
 
 part 'clix_push_notification_payload.g.dart';
 
-@JsonSerializable(fieldRename: FieldRename.snake)
+/// ClixPushNotificationPayload that mirrors the iOS SDK ClixPushNotificationPayload implementation
+@JsonSerializable()
 class ClixPushNotificationPayload {
   final String messageId;
   final String? campaignId;
@@ -25,80 +25,12 @@ class ClixPushNotificationPayload {
     this.customProperties,
   });
 
-  /// Create payload from Firebase RemoteMessage
-  factory ClixPushNotificationPayload.fromFirebaseMessage(RemoteMessage message) {
-    return ClixPushNotificationPayload.fromMap({
-      ...message.data,
-      'firebase_message_id': message.messageId,
-    });
-  }
-
-  /// Create payload from platform-specific map data
-  factory ClixPushNotificationPayload.fromMap(Map<String, dynamic> data) {
-    final customProps = Map<String, dynamic>.from(data);
-
-    final standardKeys = [
-      'clix_message_id',
-      'clix_campaign_id',
-      'clix_user_id',
-      'clix_device_id',
-      'clix_tracking_id',
-      'clix_landing_url',
-      'clix_image_url',
-      // Also handle keys without clix_ prefix for compatibility
-      'message_id',
-      'campaign_id',
-      'user_id',
-      'device_id',
-      'tracking_id',
-      'landing_url',
-      'image_url',
-      'firebase_message_id',
-    ];
-
-    for (final key in standardKeys) {
-      customProps.remove(key);
-    }
-
-    // Extract custom properties
-    Map<String, dynamic>? customProperties;
-    if (customProps.isNotEmpty) {
-      customProperties = customProps;
-    }
-
-    final messageId = data['clix_message_id'] as String? ??
-        data['message_id'] as String? ??
-        data['firebase_message_id'] as String? ??
-        ''; // Default empty string for required field
-
-    return ClixPushNotificationPayload(
-      messageId: messageId,
-      campaignId:
-          data['clix_campaign_id'] as String? ?? data['campaign_id'] as String?,
-      userId: data['clix_user_id'] as String? ?? data['user_id'] as String?,
-      deviceId:
-          data['clix_device_id'] as String? ?? data['device_id'] as String?,
-      trackingId:
-          data['clix_tracking_id'] as String? ?? data['tracking_id'] as String?,
-      landingUrl:
-          data['clix_landing_url'] as String? ?? data['landing_url'] as String?,
-      imageUrl:
-          data['clix_image_url'] as String? ?? data['image_url'] as String?,
-      customProperties: customProperties,
-    );
-  }
-
-  /// Convert to JSON
+  /// Convert to JSON map
   Map<String, dynamic> toJson() => _$ClixPushNotificationPayloadToJson(this);
 
-  /// Create from JSON
+  /// Create from JSON map
   factory ClixPushNotificationPayload.fromJson(Map<String, dynamic> json) =>
       _$ClixPushNotificationPayloadFromJson(json);
-
-  @override
-  String toString() {
-    return 'ClixPushNotificationPayload(messageId: $messageId, campaignId: $campaignId)';
-  }
 
   @override
   bool operator ==(Object other) {
@@ -108,4 +40,9 @@ class ClixPushNotificationPayload {
 
   @override
   int get hashCode => messageId.hashCode;
+
+  @override
+  String toString() {
+    return 'ClixPushNotificationPayload(messageId: $messageId, campaignId: $campaignId)';
+  }
 }

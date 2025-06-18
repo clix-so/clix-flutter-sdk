@@ -1,10 +1,9 @@
 import Flutter
 import UIKit
 import Firebase
-import clix_flutter
 
 @main
-@objc class AppDelegate: ClixAppDelegate {
+@objc class AppDelegate: FlutterAppDelegate {
   override func application(
     _ application: UIApplication,
     didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey: Any]?
@@ -15,7 +14,7 @@ import clix_flutter
     // Register generated plugins
     GeneratedPluginRegistrant.register(with: self)
     
-    // Call ClixAppDelegate's implementation for notification handling
+    // Call FlutterAppDelegate's implementation
     return super.application(application, didFinishLaunchingWithOptions: launchOptions)
   }
 }

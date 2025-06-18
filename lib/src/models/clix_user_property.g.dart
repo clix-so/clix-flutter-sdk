@@ -8,14 +8,14 @@ part of 'clix_user_property.dart';
 
 ClixUserProperty _$ClixUserPropertyFromJson(Map json) => ClixUserProperty(
       name: json['name'] as String,
-      value: json['value_string'],
+      valueString: json['value_string'],
       type: $enumDecode(_$PropertyTypeEnumMap, json['type']),
     );
 
 Map<String, dynamic> _$ClixUserPropertyToJson(ClixUserProperty instance) =>
     <String, dynamic>{
       'name': instance.name,
-      'value_string': instance.value,
+      'value_string': instance.valueString,
       'type': _$PropertyTypeEnumMap[instance.type]!,
     };
 
