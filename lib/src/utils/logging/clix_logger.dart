@@ -1,22 +1,19 @@
+import 'dart:developer' as developer;
 import 'clix_log_level.dart';
 
-/// ClixLogger that mirrors the iOS SDK ClixLogger implementation
 class ClixLogger {
   static ClixLogLevel _logLevel = ClixLogLevel.info;
-  static final _dateFormatter = DateTime.now;
 
-  /// Set the logging level
   static void setLogLevel(ClixLogLevel level) {
     _logLevel = level;
   }
 
-  /// Log a message at the specified level
   static void log({required ClixLogLevel level, required String message, Object? error}) {
-    if (level < _logLevel) {
+    if (level > _logLevel) {
       return;
     }
 
-    final timestamp = _dateFormatter().toIso8601String();
+    final timestamp = DateTime.now().toIso8601String();
     var logMessage = '[Clix][$timestamp] $message';
     if (error != null) {
       logMessage += ' - Error: $error';
@@ -24,38 +21,34 @@ class ClixLogger {
 
     switch (level) {
       case ClixLogLevel.debug:
-        print('[DEBUG] $logMessage');
+        developer.log('[DEBUG]$logMessage', name: 'Clix');
         break;
       case ClixLogLevel.info:
-        print('[INFO] $logMessage');
+        developer.log('[INFO]$logMessage', name: 'Clix');
         break;
       case ClixLogLevel.warn:
-        print('[WARN] $logMessage');
+        developer.log('[WARN]$logMessage', name: 'Clix');
         break;
       case ClixLogLevel.error:
-        print('[ERROR] $logMessage');
+        developer.log('[ERROR]$logMessage', name: 'Clix', error: error);
         break;
       case ClixLogLevel.none:
         return;
     }
   }
 
-  /// Log error message
   static void error(String message, [Object? error]) {
     log(level: ClixLogLevel.error, message: message, error: error);
   }
 
-  /// Log warning message
   static void warn(String message, [Object? error]) {
     log(level: ClixLogLevel.warn, message: message, error: error);
   }
 
-  /// Log info message
   static void info(String message, [Object? error]) {
     log(level: ClixLogLevel.info, message: message, error: error);
   }
 
-  /// Log debug message
   static void debug(String message, [Object? error]) {
     log(level: ClixLogLevel.debug, message: message, error: error);
   }

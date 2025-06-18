@@ -1,284 +1,71 @@
-import 'dart:async';
 import 'dart:convert';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../utils/logging/clix_logger.dart';
 
 class StorageService {
-  static const String _prefix = 'clix_';
-
   SharedPreferences? _prefs;
-  bool get isInitialized => _prefs != null;
-
-  Future<void> initialize() async {
-    if (_prefs != null) return; // Already initialized
-
+  
+  Future<SharedPreferences> get _preferences async {
+    if (_prefs != null) return _prefs!;
+    
     try {
+      ClixLogger.debug('Initializing storage service');
       _prefs = await SharedPreferences.getInstance();
-      ClixLogger.debug('StorageService initialized');
+      ClixLogger.debug('Successfully configured storage service');
+      return _prefs!;
     } catch (e) {
-      ClixLogger.error('Failed to initialize StorageService', e);
+      ClixLogger.error('Failed to initialize storage service', e);
       rethrow;
     }
   }
 
-  void _ensureInitialized() {
-    if (_prefs == null) {
-      throw StateError(
-          'StorageService not initialized. Call initialize() first.');
-    }
-  }
-
-  Future<void> setString(String key, String value) async {
-    _ensureInitialized();
+  Future<void> set<T>(String key, T? value) async {
     try {
-      await _prefs!.setString(_prefix + key, value);
+      final prefs = await _preferences;
+      
+      if (value == null) {
+        await prefs.remove(key);
+        return;
+      }
+
+      final encoded = jsonEncode(value);
+      await prefs.setString(key, encoded);
     } catch (e) {
-      ClixLogger.error('Failed to set string for key: $key', e);
+      ClixLogger.error('Failed to set value for key: $key', e);
       rethrow;
     }
   }
 
-  String? getString(String key) {
-    _ensureInitialized();
+  Future<T?> get<T>(String key) async {
     try {
-      return _prefs!.getString(_prefix + key);
+      final prefs = await _preferences;
+      final data = prefs.getString(key);
+      if (data == null) return null;
+      
+      try {
+        final decoded = jsonDecode(data);
+        return decoded as T?;
+      } catch (jsonError) {
+        if (T == String) {
+          ClixLogger.debug('Found legacy string value for key: $key, migrating to JSON format');
+          await set<T>(key, data as T);
+          return data as T?;
+        }
+        rethrow;
+      }
     } catch (e) {
-      ClixLogger.error('Failed to get string for key: $key', e);
-      return null;
-    }
-  }
-
-  Future<void> setBool(String key, bool value) async {
-    _ensureInitialized();
-    try {
-      await _prefs!.setBool(_prefix + key, value);
-    } catch (e) {
-      ClixLogger.error('Failed to set bool for key: $key', e);
-      rethrow;
-    }
-  }
-
-  bool? getBool(String key) {
-    _ensureInitialized();
-    try {
-      return _prefs!.getBool(_prefix + key);
-    } catch (e) {
-      ClixLogger.error('Failed to get bool for key: $key', e);
-      return null;
-    }
-  }
-
-  Future<void> setInt(String key, int value) async {
-    _ensureInitialized();
-    try {
-      await _prefs!.setInt(_prefix + key, value);
-    } catch (e) {
-      ClixLogger.error('Failed to set int for key: $key', e);
-      rethrow;
-    }
-  }
-
-  int? getInt(String key) {
-    _ensureInitialized();
-    try {
-      return _prefs!.getInt(_prefix + key);
-    } catch (e) {
-      ClixLogger.error('Failed to get int for key: $key', e);
-      return null;
-    }
-  }
-
-  Future<void> setJson(String key, Map<String, dynamic> value) async {
-    try {
-      final jsonString = jsonEncode(value);
-      await setString(key, jsonString);
-    } catch (e) {
-      ClixLogger.error('Failed to set JSON for key: $key', e);
-      rethrow;
-    }
-  }
-
-  Map<String, dynamic>? getJson(String key) {
-    try {
-      final jsonString = getString(key);
-      if (jsonString == null) return null;
-      return jsonDecode(jsonString) as Map<String, dynamic>;
-    } catch (e) {
-      ClixLogger.error('Failed to get JSON for key: $key', e);
+      ClixLogger.error('Failed to get value for key: $key', e);
       return null;
     }
   }
 
   Future<void> remove(String key) async {
-    _ensureInitialized();
     try {
-      await _prefs!.remove(_prefix + key);
+      final prefs = await _preferences;
+      await prefs.remove(key);
     } catch (e) {
       ClixLogger.error('Failed to remove key: $key', e);
       rethrow;
     }
-  }
-
-  Future<void> clear() async {
-    _ensureInitialized();
-    try {
-      final keys = _prefs!.getKeys().where((key) => key.startsWith(_prefix));
-      for (final key in keys) {
-        await _prefs!.remove(key);
-      }
-    } catch (e) {
-      ClixLogger.error('Failed to clear storage', e);
-      rethrow;
-    }
-  }
-
-  // MARK: - Static methods for SDK configuration
-
-  static SharedPreferences? _staticPrefs;
-
-  static Future<void> _ensureStaticInit() async {
-    _staticPrefs ??= await SharedPreferences.getInstance();
-  }
-
-  // Project configuration
-  static Future<void> setProjectId(String projectId) async {
-    await _ensureStaticInit();
-    await _staticPrefs!.setString('${_prefix}project_id', projectId);
-  }
-
-  static Future<String?> getProjectId() async {
-    await _ensureStaticInit();
-    return _staticPrefs!.getString('${_prefix}project_id');
-  }
-
-  static Future<void> setApiKey(String apiKey) async {
-    await _ensureStaticInit();
-    await _staticPrefs!.setString('${_prefix}api_key', apiKey);
-  }
-
-  static Future<String?> getApiKey() async {
-    await _ensureStaticInit();
-    return _staticPrefs!.getString('${_prefix}api_key');
-  }
-
-  // User configuration
-  static Future<void> setUserId(String userId) async {
-    await _ensureStaticInit();
-    await _staticPrefs!.setString('${_prefix}user_id', userId);
-  }
-
-  static Future<String?> getUserId() async {
-    await _ensureStaticInit();
-    return _staticPrefs!.getString('${_prefix}user_id');
-  }
-
-  static Future<void> removeUserId() async {
-    await _ensureStaticInit();
-    await _staticPrefs!.remove('${_prefix}user_id');
-  }
-
-  // User properties
-  static Future<void> setUserProperty(String key, dynamic value) async {
-    await _ensureStaticInit();
-    final propKey = '${_prefix}user_property_$key';
-
-    if (value == null) {
-      await _staticPrefs!.remove(propKey);
-    } else if (value is String) {
-      await _staticPrefs!.setString(propKey, value);
-    } else if (value is bool) {
-      await _staticPrefs!.setBool(propKey, value);
-    } else if (value is int) {
-      await _staticPrefs!.setInt(propKey, value);
-    } else if (value is double) {
-      await _staticPrefs!.setDouble(propKey, value);
-    } else if (value is List<String>) {
-      await _staticPrefs!.setStringList(propKey, value);
-    } else {
-      // For complex types, store as JSON
-      await _staticPrefs!.setString(propKey, jsonEncode(value));
-    }
-  }
-
-  static Future<dynamic> getUserProperty(String key) async {
-    await _ensureStaticInit();
-    final propKey = '${_prefix}user_property_$key';
-    return _staticPrefs!.get(propKey);
-  }
-
-  static Future<void> setUserProperties(Map<String, dynamic> properties) async {
-    for (final entry in properties.entries) {
-      await setUserProperty(entry.key, entry.value);
-    }
-  }
-
-  static Future<Map<String, dynamic>> getUserProperties() async {
-    await _ensureStaticInit();
-    final properties = <String, dynamic>{};
-    const prefix = '${_prefix}user_property_';
-
-    for (final key in _staticPrefs!.getKeys()) {
-      if (key.startsWith(prefix)) {
-        final propKey = key.substring(prefix.length);
-        properties[propKey] = _staticPrefs!.get(key);
-      }
-    }
-
-    return properties;
-  }
-
-  static Future<void> removeUserProperty(String key) async {
-    await _ensureStaticInit();
-    final propKey = '${_prefix}user_property_$key';
-    await _staticPrefs!.remove(propKey);
-  }
-
-  static Future<void> removeUserProperties(List<String> keys) async {
-    for (final key in keys) {
-      await removeUserProperty(key);
-    }
-  }
-
-  // Log level
-  static Future<void> setLogLevel(int level) async {
-    await _ensureStaticInit();
-    await _staticPrefs!.setInt('${_prefix}log_level', level);
-  }
-
-  static Future<int?> getLogLevel() async {
-    await _ensureStaticInit();
-    return _staticPrefs!.getInt('${_prefix}log_level');
-  }
-
-  // Push token
-  static Future<void> setPushToken(String token) async {
-    await _ensureStaticInit();
-    await _staticPrefs!.setString('${_prefix}push_token', token);
-  }
-
-  static Future<String?> getPushToken() async {
-    await _ensureStaticInit();
-    return _staticPrefs!.getString('${_prefix}push_token');
-  }
-
-  static Future<void> removePushToken() async {
-    await _ensureStaticInit();
-    await _staticPrefs!.remove('${_prefix}push_token');
-  }
-
-  // Web device ID
-  static Future<void> setWebDeviceId(String deviceId) async {
-    await _ensureStaticInit();
-    await _staticPrefs!.setString('${_prefix}web_device_id', deviceId);
-  }
-
-  static Future<String?> getWebDeviceId() async {
-    await _ensureStaticInit();
-    return _staticPrefs!.getString('${_prefix}web_device_id');
-  }
-
-  static Future<void> removeWebDeviceId() async {
-    await _ensureStaticInit();
-    await _staticPrefs!.remove('${_prefix}web_device_id');
   }
 }

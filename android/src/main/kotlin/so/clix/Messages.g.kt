@@ -34,9 +34,6 @@ private fun wrapError(exception: Throwable): List<Any?> {
   }
 }
 
-private fun createConnectionError(channelName: String): FlutterError {
-  return FlutterError("channel-error",  "Unable to establish connection on channel: '$channelName'.", "")}
-
 /**
  * Error class for passing custom error details to Flutter via a thrown PlatformException.
  * @property code The error code.
@@ -48,108 +45,17 @@ class FlutterError (
   override val message: String? = null,
   val details: Any? = null
 ) : Throwable()
-
-/**
- * Data class for notification payload
- *
- * Generated class from Pigeon that represents data sent in messages.
- */
-data class NotificationData (
-  val title: String,
-  val body: String,
-  val imageUrl: String? = null,
-  val deepLink: String? = null,
-  val data: Map<String?, String?>? = null
-)
- {
-  companion object {
-    fun fromList(pigeonVar_list: List<Any?>): NotificationData {
-      val title = pigeonVar_list[0] as String
-      val body = pigeonVar_list[1] as String
-      val imageUrl = pigeonVar_list[2] as String?
-      val deepLink = pigeonVar_list[3] as String?
-      val data = pigeonVar_list[4] as Map<String?, String?>?
-      return NotificationData(title, body, imageUrl, deepLink, data)
-    }
-  }
-  fun toList(): List<Any?> {
-    return listOf(
-      title,
-      body,
-      imageUrl,
-      deepLink,
-      data,
-    )
-  }
-}
-
-/**
- * Data class for FCM token
- *
- * Generated class from Pigeon that represents data sent in messages.
- */
-data class TokenData (
-  val token: String
-)
- {
-  companion object {
-    fun fromList(pigeonVar_list: List<Any?>): TokenData {
-      val token = pigeonVar_list[0] as String
-      return TokenData(token)
-    }
-  }
-  fun toList(): List<Any?> {
-    return listOf(
-      token,
-    )
-  }
-}
 private open class MessagesPigeonCodec : StandardMessageCodec() {
   override fun readValueOfType(type: Byte, buffer: ByteBuffer): Any? {
-    return when (type) {
-      129.toByte() -> {
-        return (readValue(buffer) as? List<Any?>)?.let {
-          NotificationData.fromList(it)
-        }
-      }
-      130.toByte() -> {
-        return (readValue(buffer) as? List<Any?>)?.let {
-          TokenData.fromList(it)
-        }
-      }
-      else -> super.readValueOfType(type, buffer)
-    }
+    return     super.readValueOfType(type, buffer)
   }
   override fun writeValue(stream: ByteArrayOutputStream, value: Any?)   {
-    when (value) {
-      is NotificationData -> {
-        stream.write(129)
-        writeValue(stream, value.toList())
-      }
-      is TokenData -> {
-        stream.write(130)
-        writeValue(stream, value.toList())
-      }
-      else -> super.writeValue(stream, value)
-    }
+    super.writeValue(stream, value)
   }
 }
 
-
-/**
- * Interface for host platform API calls
- *
- * Generated interface from Pigeon that represents a handler of messages from Flutter.
- */
+/** Generated interface from Pigeon that represents a handler of messages from Flutter. */
 interface ClixHostApi {
-  /** Get the FCM token from the platform */
-  fun getFcmToken(callback: (Result<String>) -> Unit)
-  /** Get the APNS token from the platform (iOS only) */
-  fun getApnsToken(callback: (Result<String>) -> Unit)
-  /** Initialize Firebase messaging */
-  fun initializeFirebase(callback: (Result<Unit>) -> Unit)
-  /** Request notification permissions */
-  fun requestPermissions(callback: (Result<Boolean>) -> Unit)
 
   companion object {
     /** The codec used by ClixHostApi. */
@@ -160,144 +66,6 @@ interface ClixHostApi {
     @JvmOverloads
     fun setUp(binaryMessenger: BinaryMessenger, api: ClixHostApi?, messageChannelSuffix: String = "") {
       val separatedMessageChannelSuffix = if (messageChannelSuffix.isNotEmpty()) ".$messageChannelSuffix" else ""
-      run {
-        val channel = BasicMessageChannel<Any?>(binaryMessenger, "dev.flutter.pigeon.clix_flutter.ClixHostApi.getFcmToken$separatedMessageChannelSuffix", codec)
-        if (api != null) {
-          channel.setMessageHandler { _, reply ->
-            api.getFcmToken{ result: Result<String> ->
-              val error = result.exceptionOrNull()
-              if (error != null) {
-                reply.reply(wrapError(error))
-              } else {
-                val data = result.getOrNull()
-                reply.reply(wrapResult(data))
-              }
-            }
-          }
-        } else {
-          channel.setMessageHandler(null)
-        }
-      }
-      run {
-        val channel = BasicMessageChannel<Any?>(binaryMessenger, "dev.flutter.pigeon.clix_flutter.ClixHostApi.getApnsToken$separatedMessageChannelSuffix", codec)
-        if (api != null) {
-          channel.setMessageHandler { _, reply ->
-            api.getApnsToken{ result: Result<String> ->
-              val error = result.exceptionOrNull()
-              if (error != null) {
-                reply.reply(wrapError(error))
-              } else {
-                val data = result.getOrNull()
-                reply.reply(wrapResult(data))
-              }
-            }
-          }
-        } else {
-          channel.setMessageHandler(null)
-        }
-      }
-      run {
-        val channel = BasicMessageChannel<Any?>(binaryMessenger, "dev.flutter.pigeon.clix_flutter.ClixHostApi.initializeFirebase$separatedMessageChannelSuffix", codec)
-        if (api != null) {
-          channel.setMessageHandler { _, reply ->
-            api.initializeFirebase{ result: Result<Unit> ->
-              val error = result.exceptionOrNull()
-              if (error != null) {
-                reply.reply(wrapError(error))
-              } else {
-                reply.reply(wrapResult(null))
-              }
-            }
-          }
-        } else {
-          channel.setMessageHandler(null)
-        }
-      }
-      run {
-        val channel = BasicMessageChannel<Any?>(binaryMessenger, "dev.flutter.pigeon.clix_flutter.ClixHostApi.requestPermissions$separatedMessageChannelSuffix", codec)
-        if (api != null) {
-          channel.setMessageHandler { _, reply ->
-            api.requestPermissions{ result: Result<Boolean> ->
-              val error = result.exceptionOrNull()
-              if (error != null) {
-                reply.reply(wrapError(error))
-              } else {
-                val data = result.getOrNull()
-                reply.reply(wrapResult(data))
-              }
-            }
-          }
-        } else {
-          channel.setMessageHandler(null)
-        }
-      }
-    }
-  }
-}
-/**
- * Interface for Flutter API calls from platform
- *
- * Generated class from Pigeon that represents Flutter messages that can be called from Kotlin.
- */
-class ClixFlutterApi(private val binaryMessenger: BinaryMessenger, private val messageChannelSuffix: String = "") {
-  companion object {
-    /** The codec used by ClixFlutterApi. */
-    val codec: MessageCodec<Any?> by lazy {
-      MessagesPigeonCodec()
-    }
-  }
-  /** Called when a notification is received */
-  fun onNotificationReceived(notificationArg: NotificationData, callback: (Result<Unit>) -> Unit)
-{
-    val separatedMessageChannelSuffix = if (messageChannelSuffix.isNotEmpty()) ".$messageChannelSuffix" else ""
-    val channelName = "dev.flutter.pigeon.clix_flutter.ClixFlutterApi.onNotificationReceived$separatedMessageChannelSuffix"
-    val channel = BasicMessageChannel<Any?>(binaryMessenger, channelName, codec)
-    channel.send(listOf(notificationArg)) {
-      if (it is List<*>) {
-        if (it.size > 1) {
-          callback(Result.failure(FlutterError(it[0] as String, it[1] as String, it[2] as String?)))
-        } else {
-          callback(Result.success(Unit))
-        }
-      } else {
-        callback(Result.failure(createConnectionError(channelName)))
-      } 
-    }
-  }
-  /** Called when a notification is opened */
-  fun onNotificationOpened(notificationArg: NotificationData, callback: (Result<Unit>) -> Unit)
-{
-    val separatedMessageChannelSuffix = if (messageChannelSuffix.isNotEmpty()) ".$messageChannelSuffix" else ""
-    val channelName = "dev.flutter.pigeon.clix_flutter.ClixFlutterApi.onNotificationOpened$separatedMessageChannelSuffix"
-    val channel = BasicMessageChannel<Any?>(binaryMessenger, channelName, codec)
-    channel.send(listOf(notificationArg)) {
-      if (it is List<*>) {
-        if (it.size > 1) {
-          callback(Result.failure(FlutterError(it[0] as String, it[1] as String, it[2] as String?)))
-        } else {
-          callback(Result.success(Unit))
-        }
-      } else {
-        callback(Result.failure(createConnectionError(channelName)))
-      } 
-    }
-  }
-  /** Called when FCM token is refreshed */
-  fun onTokenRefresh(tokenArg: String, callback: (Result<Unit>) -> Unit)
-{
-    val separatedMessageChannelSuffix = if (messageChannelSuffix.isNotEmpty()) ".$messageChannelSuffix" else ""
-    val channelName = "dev.flutter.pigeon.clix_flutter.ClixFlutterApi.onTokenRefresh$separatedMessageChannelSuffix"
-    val channel = BasicMessageChannel<Any?>(binaryMessenger, channelName, codec)
-    channel.send(listOf(tokenArg)) {
-      if (it is List<*>) {
-        if (it.size > 1) {
-          callback(Result.failure(FlutterError(it[0] as String, it[1] as String, it[2] as String?)))
-        } else {
-          callback(Result.success(Unit))
-        }
-      } else {
-        callback(Result.failure(createConnectionError(channelName)))
-      } 
     }
   }
 }

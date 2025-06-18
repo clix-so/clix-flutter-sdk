@@ -30,7 +30,7 @@ if (flutterVersionName == null) {
 }
 
 android {
-    namespace "com.example.clix_example"
+    namespace "so.clix.samples.basic"
     compileSdk 35
 
     compileOptions {

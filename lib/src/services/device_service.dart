@@ -1,180 +1,185 @@
-// Removed unused clix_device import
+import 'dart:io';
+import 'package:uuid/uuid.dart';
+import 'package:device_info_plus/device_info_plus.dart';
+import 'package:package_info_plus/package_info_plus.dart';
+import 'package:firebase_messaging/firebase_messaging.dart';
+
+import '../core/clix_version.dart';
+import '../models/clix_device.dart';
 import '../models/clix_user_property.dart';
 import '../utils/logging/clix_logger.dart';
 import '../utils/clix_error.dart';
 import 'device_api_service.dart';
 import 'storage_service.dart';
+import 'token_service.dart';
 
-/// Device service for managing device registration and user properties
-/// Simplified version that mirrors iOS SDK DeviceService
 class DeviceService {
+  final StorageService _storageService;
+  final TokenService _tokenService;
   final DeviceAPIService _deviceAPIService;
-  final StorageService _storage;
 
-  static const String _deviceIdKey = 'device_id';
-  static const String _userIdKey = 'user_id';
+  static const String _deviceIdKey = 'clix_device_id';
 
   DeviceService({
+    required StorageService storageService,
+    required TokenService tokenService,
     required DeviceAPIService deviceAPIService,
-    required StorageService storage,
-  })  : _deviceAPIService = deviceAPIService,
-        _storage = storage;
+  })  : _storageService = storageService,
+        _tokenService = tokenService,
+        _deviceAPIService = deviceAPIService;
 
-  /// Get current device ID
-  String? getDeviceId() {
-    try {
-      return _storage.getString(_deviceIdKey);
-    } catch (e) {
-      ClixLogger.error('Failed to get device ID', e);
-      return null;
+  Future<String> getCurrentDeviceId() async {
+    final existingId = await _storageService.get<String>(_deviceIdKey);
+    if (existingId != null) {
+      return existingId;
     }
+    
+    const uuid = Uuid();
+    final newId = uuid.v4();
+    await _storageService.set<String>(_deviceIdKey, newId);
+    return newId;
   }
 
-  /// Set user ID - mirrors iOS setUserId method
-  Future<void> setUserId(String userId) async {
+  Future<void> setProjectUserId(String projectUserId) async {
     try {
-      await _storage.setString(_userIdKey, userId);
-      ClixLogger.info('User ID set: $userId');
-    } catch (e) {
-      ClixLogger.error('Failed to set user ID', e);
-      throw ClixError.unknownErrorWithReason('Failed to set user ID: $e');
-    }
-  }
-
-  /// Remove user ID - mirrors iOS removeUserId method
-  Future<void> removeUserId() async {
-    try {
-      await _storage.remove(_userIdKey);
-      ClixLogger.info('User ID removed');
-    } catch (e) {
-      ClixLogger.error('Failed to remove user ID', e);
-      throw ClixError.unknownErrorWithReason('Failed to remove user ID: $e');
-    }
-  }
-
-  /// Get current user ID
-  String? getUserId() {
-    try {
-      return _storage.getString(_userIdKey);
-    } catch (e) {
-      ClixLogger.error('Failed to get user ID', e);
-      return null;
-    }
-  }
-
-  /// Set user property - mirrors iOS setUserProperty method
-  Future<void> setUserProperty(String key, dynamic value) async {
-    try {
-      final userProperty = ClixUserProperty.of(name: key, value: value);
-      final deviceId = getDeviceId();
-      
-      if (deviceId == null) {
-        throw ClixError.unknownErrorWithReason('Device ID not available');
-      }
-
-      await _deviceAPIService.upsertUserProperties(
+      final deviceId = await getCurrentDeviceId();
+      await _deviceAPIService.setProjectUserId(
         deviceId: deviceId,
-        properties: [userProperty],
+        projectUserId: projectUserId,
       );
-
-      // Store locally as well
-      await _storage.setString('user_property_$key', value.toString());
-      ClixLogger.info('User property set: $key');
+      ClixLogger.info('Project user ID set: $projectUserId');
     } catch (e) {
-      ClixLogger.error('Failed to set user property', e);
-      throw ClixError.unknownErrorWithReason('Failed to set user property: $e');
+      ClixLogger.error('Failed to set project user ID', e);
+      throw ClixError.unknownErrorWithReason('Failed to set project user ID: $e');
     }
   }
 
-  /// Set multiple user properties - mirrors iOS setUserProperties method
-  Future<void> setUserProperties(Map<String, dynamic> properties) async {
+  Future<void> removeProjectUserId() async {
+    try {
+      final deviceId = await getCurrentDeviceId();
+      await _deviceAPIService.removeProjectUserId(deviceId: deviceId);
+      ClixLogger.info('Project user ID removed');
+    } catch (e) {
+      ClixLogger.error('Failed to remove project user ID', e);
+      throw ClixError.unknownErrorWithReason('Failed to remove project user ID: $e');
+    }
+  }
+
+  Future<void> updateUserProperties(Map<String, dynamic> properties) async {
     try {
       final userProperties = properties.entries
           .map((entry) => ClixUserProperty.of(name: entry.key, value: entry.value))
           .toList();
       
-      final deviceId = getDeviceId();
-      if (deviceId == null) {
-        throw ClixError.unknownErrorWithReason('Device ID not available');
-      }
-
+      final deviceId = await getCurrentDeviceId();
       await _deviceAPIService.upsertUserProperties(
         deviceId: deviceId,
         properties: userProperties,
       );
 
-      // Store locally as well
-      for (final entry in properties.entries) {
-        await _storage.setString('user_property_${entry.key}', entry.value.toString());
-      }
-
-      ClixLogger.info('User properties set: ${properties.keys.join(', ')}');
+      ClixLogger.info('User properties updated: ${properties.keys.join(', ')}');
     } catch (e) {
-      ClixLogger.error('Failed to set user properties', e);
-      throw ClixError.unknownErrorWithReason('Failed to set user properties: $e');
+      ClixLogger.error('Failed to update user properties', e);
+      throw ClixError.unknownErrorWithReason('Failed to update user properties: $e');
     }
   }
 
-  /// Remove user property - mirrors iOS removeUserProperty method
-  Future<void> removeUserProperty(String key) async {
+  Future<void> removeUserProperties(List<String> names) async {
     try {
-      final deviceId = getDeviceId();
-      if (deviceId == null) {
-        throw ClixError.unknownErrorWithReason('Device ID not available');
-      }
-
+      final deviceId = await getCurrentDeviceId();
       await _deviceAPIService.removeUserProperties(
         deviceId: deviceId,
-        propertyNames: [key],
+        propertyNames: names,
       );
 
-      // Remove locally as well
-      await _storage.remove('user_property_$key');
-      ClixLogger.info('User property removed: $key');
-    } catch (e) {
-      ClixLogger.error('Failed to remove user property', e);
-      throw ClixError.unknownErrorWithReason('Failed to remove user property: $e');
-    }
-  }
-
-  /// Remove multiple user properties - mirrors iOS removeUserProperties method
-  Future<void> removeUserProperties(List<String> keys) async {
-    try {
-      final deviceId = getDeviceId();
-      if (deviceId == null) {
-        throw ClixError.unknownErrorWithReason('Device ID not available');
-      }
-
-      await _deviceAPIService.removeUserProperties(
-        deviceId: deviceId,
-        propertyNames: keys,
-      );
-
-      // Remove locally as well
-      for (final key in keys) {
-        await _storage.remove('user_property_$key');
-      }
-
-      ClixLogger.info('User properties removed: ${keys.join(', ')}');
+      ClixLogger.info('User properties removed: ${names.join(', ')}');
     } catch (e) {
       ClixLogger.error('Failed to remove user properties', e);
       throw ClixError.unknownErrorWithReason('Failed to remove user properties: $e');
     }
   }
 
-  /// Generate or store device ID
-  Future<void> _ensureDeviceId() async {
-    if (getDeviceId() == null) {
-      // Generate a simple device ID
-      final timestamp = DateTime.now().millisecondsSinceEpoch;
-      final deviceId = 'flutter_device_$timestamp';
-      await _storage.setString(_deviceIdKey, deviceId);
-      ClixLogger.info('Generated device ID: $deviceId');
+  Future<void> upsertToken(String token, {String tokenType = 'FCM'}) async {
+    try {
+      await _tokenService.saveToken(token);
+      
+      final deviceId = await getCurrentDeviceId();
+      final device = await createDevice(deviceId: deviceId, token: token);
+      
+      await _deviceAPIService.registerDevice(device: device);
+      
+      ClixLogger.info('Token upserted: $tokenType');
+    } catch (e) {
+      ClixLogger.error('Failed to upsert token', e);
+      throw ClixError.unknownErrorWithReason('Failed to upsert token: $e');
     }
   }
 
-  /// Initialize device - creates device ID if needed
-  Future<void> initialize() async {
-    await _ensureDeviceId();
+  static Future<ClixDevice> createDevice({required String deviceId, String? token}) async {
+    final deviceInfo = DeviceInfoPlugin();
+    final packageInfo = await PackageInfo.fromPlatform();
+    
+    String platform;
+    String model;
+    String manufacturer;
+    String osName;
+    String osVersion;
+    
+    if (Platform.isAndroid) {
+      final androidInfo = await deviceInfo.androidInfo;
+      platform = 'Android';
+      model = androidInfo.model;
+      manufacturer = androidInfo.manufacturer;
+      osName = 'Android';
+      osVersion = androidInfo.version.release;
+    } else if (Platform.isIOS) {
+      final iosInfo = await deviceInfo.iosInfo;
+      platform = 'iOS';
+      model = iosInfo.model;
+      manufacturer = 'Apple';
+      osName = iosInfo.systemName;
+      osVersion = iosInfo.systemVersion;
+    } else {
+      platform = Platform.operatingSystem;
+      model = 'Unknown';
+      manufacturer = 'Unknown';
+      osName = Platform.operatingSystem;
+      osVersion = Platform.operatingSystemVersion;
+    }
+    
+    final locale = Platform.localeName.split('_');
+    final localeLanguage = locale.isNotEmpty ? locale[0] : 'en';
+    final localeRegion = locale.length > 1 ? locale[1] : 'US';
+    
+    final timezone = DateTime.now().timeZoneName;
+    
+    bool isPushPermissionGranted = false;
+    try {
+      final settings = await FirebaseMessaging.instance.getNotificationSettings();
+      isPushPermissionGranted = settings.authorizationStatus == AuthorizationStatus.authorized ||
+                               settings.authorizationStatus == AuthorizationStatus.provisional;
+    } catch (e) {
+      ClixLogger.error('Failed to get push permission status', e);
+    }
+    
+    return ClixDevice(
+      id: deviceId,
+      platform: platform,
+      model: model,
+      manufacturer: manufacturer,
+      osName: osName,
+      osVersion: osVersion,
+      localeRegion: localeRegion,
+      localeLanguage: localeLanguage,
+      timezone: timezone,
+      appName: packageInfo.appName,
+      appVersion: packageInfo.version,
+      sdkType: 'flutter',
+      sdkVersion: await ClixVersion.version,
+      adId: null,
+      isPushPermissionGranted: isPushPermissionGranted,
+      pushToken: token,
+      pushTokenType: token != null ? 'FCM' : null,
+    );
   }
 }

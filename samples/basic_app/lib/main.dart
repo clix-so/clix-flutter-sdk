@@ -1,8 +1,7 @@
 import 'dart:async';
 
-import 'package:clix_flutter/clix.dart';
+import 'package:clix_flutter/clix_flutter.dart';
 import 'package:firebase_core/firebase_core.dart';
-// Removed unused firebase_messaging import
 import 'package:flutter/material.dart';
 
 import 'clix_info.dart';
@@ -10,12 +9,9 @@ import 'clix_info.dart';
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
-  // Initialize Firebase
   await Firebase.initializeApp();
 
-  // Firebase background handler will be managed by Clix SDK internally
 
-  // Initialize Clix SDK with static method
   await Clix.initialize(const ClixConfig(
     projectId: ClixInfo.projectId,
     apiKey: ClixInfo.apiKey,
@@ -145,8 +141,6 @@ class _HomePageState extends State<HomePage> {
   }
 
   void _setupNotificationStreams() {
-    // Note: Notification streams are handled internally by Firebase service
-    // Custom handling would be implemented through Firebase callbacks
     debugPrint('Notification streams setup - handled internally by Clix SDK');
   }
 
@@ -154,7 +148,6 @@ class _HomePageState extends State<HomePage> {
     final userId = _userIdController.text.trim();
     if (userId.isEmpty) return;
 
-    // Save context before async operations
     final messenger = ScaffoldMessenger.of(context);
 
     try {
@@ -182,7 +175,6 @@ class _HomePageState extends State<HomePage> {
 
     if (key.isEmpty || value.isEmpty) return;
 
-    // Save context before async operations
     final messenger = ScaffoldMessenger.of(context);
 
     try {
@@ -238,7 +230,6 @@ class _HomePageState extends State<HomePage> {
                 ),
                 const SizedBox(height: 16),
 
-                // Main content
                 Container(
                   margin: const EdgeInsets.symmetric(horizontal: 20),
                   padding: const EdgeInsets.all(24),
@@ -249,7 +240,6 @@ class _HomePageState extends State<HomePage> {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      // Project Information
                       _buildInfoRow('Project ID:', _projectId),
                       const SizedBox(height: 16),
                       _buildInfoRow('API Key:', _apiKey),
@@ -261,7 +251,6 @@ class _HomePageState extends State<HomePage> {
 
                       const SizedBox(height: 32),
 
-                      // User ID Section
                       const Text(
                         'User ID',
                         style: TextStyle(
@@ -291,7 +280,6 @@ class _HomePageState extends State<HomePage> {
 
                       const SizedBox(height: 32),
 
-                      // User Property Section
                       const Text(
                         'User Property Key',
                         style: TextStyle(
@@ -332,7 +320,6 @@ class _HomePageState extends State<HomePage> {
 
                       const SizedBox(height: 32),
 
-                      // Set Property Button
                       SizedBox(
                         width: double.infinity,
                         child: ElevatedButton(

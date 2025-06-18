@@ -1,9 +1,7 @@
-import '../utils/clix_error.dart';
 import '../utils/logging/clix_logger.dart';
 import 'event_api_service.dart';
 import 'device_service.dart';
 
-/// EventService that mirrors the iOS SDK EventService implementation
 class EventService {
   final EventAPIService _eventAPIService;
   final DeviceService _deviceService;
@@ -14,7 +12,6 @@ class EventService {
   }) : _eventAPIService = eventAPIService,
        _deviceService = deviceService;
 
-  /// Track a custom event - mirrors iOS trackEvent method
   Future<void> trackEvent(
     String name, {
     Map<String, dynamic>? properties,
@@ -23,12 +20,8 @@ class EventService {
     try {
       ClixLogger.debug('Tracking event: $name');
       
-      final deviceId = _deviceService.getDeviceId();
-      if (deviceId == null) {
-        throw ClixError.unknownErrorWithReason('Device ID not available for event tracking');
-      }
+      final deviceId = await _deviceService.getCurrentDeviceId();
 
-      // Clean properties to match iOS behavior - remove null values
       final cleanProperties = <String, dynamic>{};
       if (properties != null) {
         for (final entry in properties.entries) {

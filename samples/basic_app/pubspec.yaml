@@ -1,6 +1,6 @@
 name: clix_sample
 description: Demonstrates how to use the Clix Flutter SDK
-version: 1.0.0+1
+version: 1.0.0
 publish_to: 'none'
 
 environment:

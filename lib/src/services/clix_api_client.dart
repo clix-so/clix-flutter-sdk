@@ -1,34 +1,29 @@
 import 'dart:convert';
+import 'package:http/http.dart' as http;
 
 import '../core/clix_config.dart';
 import '../core/clix_version.dart';
 import '../utils/logging/clix_logger.dart';
-import '../utils/http/http_client.dart';
-import '../utils/http/http_method.dart';
-import '../utils/http/http_request.dart';
-import '../utils/http/http_response.dart';
 
-/// Base API client for Clix services
-/// Handles authentication headers and base URL configuration
 class ClixAPIClient {
   final ClixConfig _config;
-  final HTTPClient _httpClient;
+  final http.Client _httpClient;
 
   ClixAPIClient({
     required ClixConfig config,
-    HTTPClient? httpClient,
+    http.Client? httpClient,
   })  : _config = config,
-        _httpClient = httpClient ?? HTTPClient.shared;
+        _httpClient = httpClient ?? http.Client();
 
-  /// Get common headers for all API requests
-  Map<String, String> get _commonHeaders {
+  Future<Map<String, String>> get _commonHeaders async {
+    final version = await ClixVersion.version;
     final headers = <String, String>{
+      'Content-Type': 'application/json',
       'X-Clix-Project-ID': _config.projectId,
       'X-Clix-API-Key': _config.apiKey,
-      'User-Agent': 'Clix-Flutter-SDK/${ClixVersion.version}',
+      'User-Agent': 'Clix-Flutter-SDK/$version',
     };
 
-    // Add extra headers if provided
     if (_config.extraHeaders != null) {
       headers.addAll(_config.extraHeaders!);
     }
@@ -36,55 +31,60 @@ class ClixAPIClient {
     return headers;
   }
 
-  /// Build full URL from endpoint path
   String _buildUrl(String path) {
     final baseUrl = _config.endpoint.endsWith('/')
         ? _config.endpoint.substring(0, _config.endpoint.length - 1)
         : _config.endpoint;
 
-    // Add /api/v1 prefix to match iOS SDK structure
     const apiBasePath = '/api/v1';
     final fullPath = path.startsWith('/') ? path : '/$path';
     return '$baseUrl$apiBasePath$fullPath';
   }
 
-  /// Perform GET request with authentication
-  Future<HTTPResponse<T>> get<T>(
+  Uri _buildUri(String path, Map<String, dynamic>? queryParameters) {
+    final url = _buildUrl(path);
+    final uri = Uri.parse(url);
+    
+    if (queryParameters != null && queryParameters.isNotEmpty) {
+      return uri.replace(queryParameters: queryParameters.map((key, value) => MapEntry(key, value.toString())));
+    }
+    
+    return uri;
+  }
+
+  Future<http.Response> get(
     String path, {
     Map<String, String>? headers,
     Map<String, dynamic>? queryParameters,
-    T Function(Map<String, dynamic>)? fromJson,
   }) async {
-    final url = _buildUrl(path);
+    final uri = _buildUri(path, queryParameters);
+    final commonHeaders = await _commonHeaders;
     final requestHeaders = <String, String>{
-      ..._commonHeaders,
+      ...commonHeaders,
       if (headers != null) ...headers,
     };
 
     ClixLogger.debug('API GET $path');
+    ClixLogger.debug('Making request to: $uri');
 
-    final request = HTTPRequest(
-      method: HTTPMethod.get,
-      url: Uri.parse(url),
-      headers: requestHeaders,
-      params: queryParameters,
-    );
-
-    ClixLogger.debug('Making request to: $url');
-    return await _httpClient.request(request) as HTTPResponse<T>;
+    final response = await _httpClient.get(uri, headers: requestHeaders);
+    
+    ClixLogger.debug('Response Status: ${response.statusCode}');
+    ClixLogger.debug('Response Body: ${response.body}');
+    
+    return response;
   }
 
-  /// Perform POST request with authentication
-  Future<HTTPResponse<T>> post<T>(
+  Future<http.Response> post(
     String path, {
     Map<String, String>? headers,
     Map<String, dynamic>? queryParameters,
     dynamic body,
-    T Function(Map<String, dynamic>)? fromJson,
   }) async {
-    final url = _buildUrl(path);
+    final uri = _buildUri(path, queryParameters);
+    final commonHeaders = await _commonHeaders;
     final requestHeaders = <String, String>{
-      ..._commonHeaders,
+      ...commonHeaders,
       if (headers != null) ...headers,
     };
 
@@ -96,79 +96,72 @@ class ClixAPIClient {
       ClixLogger.debug('Query Parameters: $queryParameters');
     }
 
-    final request = HTTPRequest(
-      method: HTTPMethod.post,
-      url: Uri.parse(url),
+    final encodedBody = body != null ? jsonEncode(body) : null;
+    
+    final response = await _httpClient.post(
+      uri,
       headers: requestHeaders,
-      params: queryParameters,
-      body: body,
+      body: encodedBody,
     );
 
-    ClixLogger.debug('Making request to: $url');
-    final response = await _httpClient.request(request);
-
     ClixLogger.debug('Response Status: ${response.statusCode}');
-    ClixLogger.debug('Response Body: ${response.data}');
+    ClixLogger.debug('Response Body: ${response.body}');
 
-    return response as HTTPResponse<T>;
+    return response;
   }
 
-  /// Perform PUT request with authentication
-  Future<HTTPResponse<T>> put<T>(
+  Future<http.Response> put(
     String path, {
     Map<String, String>? headers,
     Map<String, dynamic>? queryParameters,
     dynamic body,
-    T Function(Map<String, dynamic>)? fromJson,
   }) async {
-    final url = _buildUrl(path);
+    final uri = _buildUri(path, queryParameters);
+    final commonHeaders = await _commonHeaders;
     final requestHeaders = <String, String>{
-      ..._commonHeaders,
+      ...commonHeaders,
       if (headers != null) ...headers,
     };
 
     ClixLogger.debug('API PUT $path');
 
-    final request = HTTPRequest(
-      method: HTTPMethod.put,
-      url: Uri.parse(url),
+    final encodedBody = body != null ? jsonEncode(body) : null;
+    
+    final response = await _httpClient.put(
+      uri,
       headers: requestHeaders,
-      params: queryParameters,
-      body: body,
+      body: encodedBody,
     );
 
-    ClixLogger.debug('Making request to: $url');
-    return await _httpClient.request(request) as HTTPResponse<T>;
+    ClixLogger.debug('Response Status: ${response.statusCode}');
+    ClixLogger.debug('Response Body: ${response.body}');
+
+    return response;
   }
 
-  /// Perform DELETE request with authentication
-  Future<HTTPResponse<T>> delete<T>(
+  Future<http.Response> delete(
     String path, {
     Map<String, String>? headers,
     Map<String, dynamic>? queryParameters,
-    T Function(Map<String, dynamic>)? fromJson,
   }) async {
-    final url = _buildUrl(path);
+    final uri = _buildUri(path, queryParameters);
+    final commonHeaders = await _commonHeaders;
     final requestHeaders = <String, String>{
-      ..._commonHeaders,
+      ...commonHeaders,
       if (headers != null) ...headers,
     };
 
     ClixLogger.debug('API DELETE $path');
 
-    final request = HTTPRequest(
-      method: HTTPMethod.delete,
-      url: Uri.parse(url),
-      headers: requestHeaders,
-      params: queryParameters,
-    );
+    final response = await _httpClient.delete(uri, headers: requestHeaders);
 
-    ClixLogger.debug('Making request to: $url');
-    return await _httpClient.request(request) as HTTPResponse<T>;
+    ClixLogger.debug('Response Status: ${response.statusCode}');
+    ClixLogger.debug('Response Body: ${response.body}');
+
+    return response;
   }
 
-  /// Close the underlying HTTP client
   void close() {
-    // HTTPClient.shared doesn't need to be closed
+    _httpClient.close();
   }
 }

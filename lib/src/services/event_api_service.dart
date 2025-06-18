@@ -1,13 +1,11 @@
 import '../utils/logging/clix_logger.dart';
 import 'clix_api_client.dart';
 
-/// EventAPIService that mirrors the iOS SDK EventAPIService implementation
 class EventAPIService {
   final ClixAPIClient _apiClient;
 
   EventAPIService({required ClixAPIClient apiClient}) : _apiClient = apiClient;
 
-  /// Track event - mirrors iOS trackEvent method
   Future<void> trackEvent({
     required String deviceId,
     required String name,
@@ -17,7 +15,6 @@ class EventAPIService {
     try {
       ClixLogger.debug('Tracking event: $name for device: $deviceId');
       
-      // Match iOS EventRequestBody structure exactly
       final eventRequestBody = {
         'device_id': deviceId,
         'name': name,
@@ -27,12 +24,16 @@ class EventAPIService {
         },
       };
 
-      await _apiClient.post<Map<String, dynamic>>(
+      final response = await _apiClient.post(
         '/events',
         body: {
           'events': [eventRequestBody]
         },
       );
+      
+      if (response.statusCode < 200 || response.statusCode >= 300) {
+        throw Exception('HTTP ${response.statusCode}: ${response.body}');
+      }
 
       ClixLogger.info('Event tracked successfully: $name for device: $deviceId');
     } catch (e) {

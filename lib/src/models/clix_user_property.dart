@@ -2,7 +2,6 @@ import 'package:json_annotation/json_annotation.dart';
 
 part 'clix_user_property.g.dart';
 
-/// Property type enumeration matching iOS SDK
 enum PropertyType {
   @JsonValue('USER_PROPERTY_TYPE_STRING')
   string,
@@ -12,13 +11,12 @@ enum PropertyType {
   boolean;
 }
 
-/// ClixUserProperty that mirrors the iOS SDK ClixUserProperty implementation
 @JsonSerializable()
 class ClixUserProperty {
 
   final String name;
   @JsonKey(name: 'value_string')
-  final dynamic valueString; // Maps to value_string in iOS SDK
+  final dynamic valueString;
   final PropertyType type;
 
   const ClixUserProperty({
@@ -27,7 +25,6 @@ class ClixUserProperty {
     required this.type,
   });
 
-  /// Create ClixUserProperty from value (auto-detect type) - mirrors iOS SDK .of() method
   factory ClixUserProperty.of({required String name, required dynamic value}) {
     PropertyType type;
     dynamic codableValue;
@@ -53,10 +50,8 @@ class ClixUserProperty {
     );
   }
 
-  /// Convert to JSON map
   Map<String, dynamic> toJson() => _$ClixUserPropertyToJson(this);
 
-  /// Create from JSON map
   factory ClixUserProperty.fromJson(Map<String, dynamic> json) =>
       _$ClixUserPropertyFromJson(json);
 

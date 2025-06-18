@@ -2,7 +2,6 @@ import 'package:json_annotation/json_annotation.dart';
 
 part 'clix_push_notification_payload.g.dart';
 
-/// ClixPushNotificationPayload that mirrors the iOS SDK ClixPushNotificationPayload implementation
 @JsonSerializable()
 class ClixPushNotificationPayload {
   final String messageId;
@@ -25,10 +24,8 @@ class ClixPushNotificationPayload {
     this.customProperties,
   });
 
-  /// Convert to JSON map
   Map<String, dynamic> toJson() => _$ClixPushNotificationPayloadToJson(this);
 
-  /// Create from JSON map
   factory ClixPushNotificationPayload.fromJson(Map<String, dynamic> json) =>
       _$ClixPushNotificationPayloadFromJson(json);
 

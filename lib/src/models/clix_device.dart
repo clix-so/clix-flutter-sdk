@@ -1,9 +1,7 @@
-// Removed unused imports
 import 'package:json_annotation/json_annotation.dart';
 
 part 'clix_device.g.dart';
 
-/// ClixDevice model that mirrors the iOS SDK ClixDevice implementation
 @JsonSerializable()
 class ClixDevice {
   final String id;
@@ -44,13 +42,10 @@ class ClixDevice {
     this.pushTokenType,
   });
 
-  /// Convert to JSON map
   Map<String, dynamic> toJson() => _$ClixDeviceToJson(this);
 
-  /// Create from JSON map
   factory ClixDevice.fromJson(Map<String, dynamic> json) => _$ClixDeviceFromJson(json);
 
-  /// Create a copy with updated fields
   ClixDevice copyWith({
     String? id,
     String? platform,
