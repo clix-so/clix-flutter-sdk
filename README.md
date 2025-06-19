@@ -1,72 +1,50 @@
 # Clix Flutter SDK
 
-Flutter SDK for Clix service - a powerful customer engagement platform.
-
-## Features
-
-- Device and user management
-- Event tracking
-- Push notification handling via Firebase Cloud Messaging
-- User property management
-- Automatic device information collection
-- Thread-safe initialization
+Clix Flutter SDK is a powerful tool for managing push notifications and user events in your Flutter application. It provides a simple and intuitive interface for user engagement and analytics.
 
 ## Installation
 
 Add this to your package's `pubspec.yaml` file:
-
 ```yaml
 dependencies:
-  clix: ^0.0.1
+  clix_flutter: ^0.0.1
 ```
 
-## Setup
+Then run:
 
-### iOS Setup
-
-1. Add Firebase configuration file (`GoogleService-Info.plist`) to your iOS project
-2. Configure push notifications in your iOS project capabilities
-3. Add the following to your `Info.plist`:
-
-```xml
-<key>FirebaseMessagingAutoInitEnabled</key>
-<true/>
+```bash
+flutter pub get
 ```
 
-### Android Setup
+## Requirements
 
-1. Add Firebase configuration file (`google-services.json`) to your Android project
-2. Add the following to your `android/build.gradle`:
-
-```gradle
-buildscript {
-    dependencies {
-        classpath 'com.google.gms:google-services:4.3.15'
-    }
-}
-```
-
-3. Add to your `android/app/build.gradle`:
-
-```gradle
-apply plugin: 'com.google.gms.google-services'
-```
+- Flutter 3.0.0 or later
+- Dart 2.17.0 or later
+- iOS 14.0+ / Android API 21+
 
 ## Usage
 
-### Initialize the SDK
+### Initialization
+
+Initialize the SDK with a ClixConfig object. The config is required and contains your project settings.
 
 ```dart
-import 'package:clix/clix.dart';
+import 'package:clix_flutter/clix_flutter.dart';
+import 'package:firebase_core/firebase_core.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   
-  // Initialize Clix SDK (async version - recommended)
+  // Initialize Firebase first
+  await Firebase.initializeApp();
+  
+  // Initialize Clix SDK
   await Clix.initialize(const ClixConfig(
     projectId: 'YOUR_PROJECT_ID',
     apiKey: 'YOUR_API_KEY',
-    logLevel: ClixLogLevel.debug,
+    endpoint: 'https://api.clix.so', // Optional: default is https://api.clix.so
+    logLevel: ClixLogLevel.debug, // Optional: set log level
+    extraHeaders: {}, // Optional: extra headers for API requests
   ));
   
   runApp(MyApp());
@@ -76,98 +54,104 @@ void main() async {
 ### User Management
 
 ```dart
-// Set user ID (async - recommended)
+// Set user ID
 await Clix.setUserId('user123');
 
-// Set user ID (sync - fire and forget)
-Clix.setUserIdSync('user123');
+// Set user properties
+await Clix.setUserProperty('name', 'John Doe');
+await Clix.setUserProperties({
+  'age': 25,
+  'premium': true,
+  'subscription_plan': 'pro',
+});
+
+// Remove user properties
+await Clix.removeUserProperty('name');
+await Clix.removeUserProperties(['age', 'premium']);
 
 // Remove user ID
 await Clix.removeUserId();
 ```
 
-### User Properties
-
-```dart
-// Set single property (async - recommended)
-await Clix.setUserProperty('subscription_plan', 'premium');
-
-// Set single property (sync - fire and forget)
-Clix.setUserPropertySync('subscription_plan', 'premium');
-
-// Set multiple properties
-await Clix.setUserProperties({
-  'subscription_plan': 'premium',
-  'total_purchases': 5,
-  'is_verified': true,
-});
-
-// Remove single property
-await Clix.removeUserProperty('temporary_flag');
-
-// Remove multiple properties
-await Clix.removeUserProperties(['temp1', 'temp2']);
-```
-
-### Event Tracking
-
-```dart
-// Track event (async - recommended)
-await Clix.trackEvent('button_clicked', properties: {
-  'button_name': 'subscribe',
-  'screen': 'home',
-});
-
-// Track event (sync - fire and forget)
-Clix.trackEventSync('button_clicked', properties: {
-  'button_name': 'subscribe',
-  'screen': 'home',
-});
-```
-
 ### Device Information
 
 ```dart
-// Get device ID (async - recommended)
+// Get device ID
 final deviceId = await Clix.getDeviceId();
-
-// Get device ID (sync with timeout protection)
-final deviceId = Clix.getDeviceIdSync();
 
 // Get push token
 final pushToken = await Clix.getPushToken();
 ```
 
-### Push Notifications
-
-```dart
-// Set notification handlers
-Clix.setNotificationReceivedHandler((payload) {
-  print('Notification received: ${payload.messageId}');
-});
-
-Clix.setNotificationTappedHandler((payload) {
-  print('Notification tapped: ${payload.messageId}');
-  if (payload.landingUrl != null) {
-    // Handle deep link
-  }
-});
-
-// Use streams (more Dart-idiomatic)
-Clix.onNotificationReceived?.listen((payload) {
-  print('Notification received: ${payload.messageId}');
-});
-
-Clix.onNotificationTapped?.listen((payload) {
-  print('Notification tapped: ${payload.messageId}');
-});
-```
-
 ### Logging
 
 ```dart
-// Set log level
 Clix.setLogLevel(ClixLogLevel.debug);
+// Available log levels:
+// - ClixLogLevel.none: No logs
+// - ClixLogLevel.error: Error logs only
+// - ClixLogLevel.warning: Warning logs
+// - ClixLogLevel.info: Info logs
+// - ClixLogLevel.debug: Debug logs
+// - ClixLogLevel.verbose: All logs
+```
+
+### Push Notification Integration
+
+The Clix Flutter SDK automatically handles push notification integration through Firebase Cloud Messaging.
+
+#### Setup Firebase
+
+1. **Add Firebase to your Flutter project**
+   - Follow the [Firebase setup guide](https://firebase.google.com/docs/flutter/setup)
+   - Add `google-services.json` (Android) and `GoogleService-Info.plist` (iOS)
+
+2. **Enable Push Notifications**
+   - For iOS: Enable Push Notifications capability in Xcode
+   - For Android: No additional setup required
+
+3. **Add Firebase dependencies**
+
+```yaml
+dependencies:
+  firebase_core: ^3.6.0
+  firebase_messaging: ^15.1.3
+```
+
+#### Handling Notifications
+
+The SDK automatically handles notification registration and token management. Notifications are processed internally for analytics and tracking.
+
+```dart
+// Notification handling is automatic - no additional code required
+// The SDK will track notification delivery and engagement automatically
+```
+
+## Firebase Setup
+
+### iOS Setup
+
+1. Add your `GoogleService-Info.plist` to the iOS project in Xcode
+2. Enable Push Notifications capability in your iOS project
+3. Add Background Modes capability and check "Remote notifications"
+
+### Android Setup
+
+1. Add your `google-services.json` to `android/app/`
+2. Add the Google Services plugin to your `android/build.gradle`:
+
+```gradle
+buildscript {
+    dependencies {
+        classpath 'com.google.gms:google-services:4.3.15'
+    }
+}
+```
+
+3. Apply the plugin in `android/app/build.gradle`:
+
+```gradle
+apply plugin: 'com.google.gms.google-services'
 ```
 
 ## Configuration Options
@@ -175,98 +159,124 @@ Clix.setLogLevel(ClixLogLevel.debug);
 ### ClixConfig
 
 - `projectId` (required): Your Clix project ID
-- `apiKey` (required): Your Clix API key
+- `apiKey` (required): Your Clix API key  
 - `endpoint`: API endpoint (default: 'https://api.clix.so')
 - `logLevel`: Logging level (default: ClixLogLevel.error)
-- `extraHeaders`: Additional HTTP headers
+- `extraHeaders`: Additional HTTP headers for API requests
 
 ### ClixLogLevel
 
-- `verbose`: All logs
-- `debug`: Debug and above
-- `info`: Info and above
-- `warning`: Warning and above
-- `error`: Error only
-- `none`: No logs
+- `verbose`: All logs including detailed debugging
+- `debug`: Debug information and above
+- `info`: General information and above
+- `warning`: Warning messages and above
+- `error`: Error messages only
+- `none`: No logging
 
-## Development
+## Sample App
 
-### Build System
+A comprehensive sample app is provided in the `samples/basic_app` directory. The sample demonstrates:
 
-This project includes a comprehensive build system similar to the iOS SDK:
+- Basic Clix SDK integration
+- Push notification handling with Firebase
+- User property management
+- Device information display
 
-#### Using Makefile (Recommended)
-```bash
-# Show all available commands
-make help
+To run the sample:
 
-# Build the package
-make build
+1. Navigate to `samples/basic_app`
+2. Follow the Firebase setup instructions in `FIREBASE_SETUP.md`
+3. Update `lib/clix_info.dart` with your project details
+4. Run the app: `flutter run`
 
-# Run tests
-make test
+## Error Handling
 
-# Format and lint code
-make format
-make lint
-make lint-fix
+All SDK operations can throw `ClixError`. Always handle potential errors:
 
-# Complete development workflow
-make all
-
-# Clean build artifacts
-make clean
+```dart
+try {
+  await Clix.setUserId('user123');
+} catch (error) {
+  print('Failed to set user ID: $error');
+}
 ```
 
-#### Using Shell Scripts
-```bash
-# Make script executable
-chmod +x scripts/build.sh
+## Thread Safety
 
-# Run commands
-./scripts/build.sh help
-./scripts/build.sh build
-./scripts/build.sh test
-./scripts/build.sh all
+The SDK is thread-safe and all operations can be called from any isolate. Async operations will automatically wait for SDK initialization to complete.
+
+## Advanced Features
+
+### Manual Event Tracking
+
+While the SDK automatically tracks notification events, you can also track custom events:
+
+```dart
+// Custom event tracking methods would be implemented here
+// Currently handled automatically by the SDK
 ```
 
-#### Using npm-style Scripts
-```bash
-cd scripts/
-npm run build
-npm run test
-npm run lint:fix
-npm run all
+### Custom Properties
+
+User properties support various data types:
+
+```dart
+await Clix.setUserProperties({
+  'name': 'John Doe',           // String
+  'age': 25,                    // Number
+  'premium': true,              // Boolean
+  'tags': ['flutter', 'mobile'], // Array
+  'metadata': {                 // Object
+    'source': 'mobile_app',
+    'version': '1.0.0',
+  },
+});
 ```
 
-### Available Commands
+## Platform-Specific Considerations
 
-- **build** - Build the Flutter package
-- **clean** - Clean build artifacts and caches  
-- **format** - Format Dart code using `dart format`
-- **lint** - Run code analysis using `dart analyze`
-- **lint-fix** - Automatically fix linting issues
-- **test** - Run tests with coverage reporting
-- **analyze** - Run comprehensive code analysis
-- **get** - Fetch package dependencies
-- **upgrade** - Update package dependencies  
-- **doctor** - Check Flutter/Dart installation
-- **check-dependencies** - Check for dependency issues
-- **all** - Complete development workflow (format + lint-fix + test + build)
+### iOS
 
-### Continuous Integration
+- Requires iOS 14.0 or later
+- Push notifications require user permission
+- Background processing is automatically handled
 
-The project includes GitHub Actions workflows that use the Makefile for:
-- Multi-platform testing (Ubuntu, macOS)
-- Multiple Flutter versions
-- Code analysis and formatting checks
-- Coverage reporting
-- Build artifact generation
+### Android
 
-## Example
+- Requires Android API level 21 or later
+- Notification channels are automatically managed
+- Background processing follows Android guidelines
 
-See the [samples/basic_app](samples/basic_app) directory for a complete sample app.
+## Performance
+
+- Lightweight initialization
+- Efficient background processing
+- Minimal memory footprint
+- Optimized network requests
+
+## Privacy
+
+The SDK respects user privacy:
+- Only collects necessary device information
+- User data is handled according to your privacy policy
+- Push tokens are managed securely
+- No personal data is collected without consent
 
 ## License
 
-MIT License
+This project is licensed under the MIT License with Custom Restrictions. See the [LICENSE](LICENSE) file for details.
+
+## Changelog
+
+See the full release history and changes in the [CHANGELOG.md](CHANGELOG.md) file.
+
+## Contributing
+
+We welcome contributions! Please read the [CONTRIBUTING.md](CONTRIBUTING.md) guide before submitting issues or pull requests.
+
+## Support
+
+For support and questions:
+- Check the sample app for implementation examples
+- Review the API documentation
+- Contact support through your Clix dashboard

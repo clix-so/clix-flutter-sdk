@@ -63,6 +63,9 @@ class Clix {
     // Store configuration
     await _storageService!.set<String>('project_id', config.projectId);
     await _storageService!.set<String>('api_key', config.apiKey);
+    
+    // Store full config for background handler
+    await _storageService!.set<Map<String, dynamic>>('clix_config', config.toJson());
 
     // Initialize API client
     final apiClient = ClixAPIClient(config: config);
@@ -190,4 +193,22 @@ class Clix {
 
   /// Check if SDK is initialized
   static bool get isInitialized => _shared != null;
+  
+  /// Track event
+  static Future<void> trackEvent(
+    String name, {
+    Map<String, dynamic>? properties,
+    String? messageId,
+  }) async {
+    await _waitForInitialization();
+    try {
+      await _shared!._eventService!.trackEvent(
+        name,
+        properties: properties,
+        messageId: messageId,
+      );
+    } catch (e) {
+      throw ClixError.unknownErrorWithReason('Failed to track event: $e');
+    }
+  }
 }
