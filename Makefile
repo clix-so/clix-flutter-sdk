@@ -1,7 +1,7 @@
 # Clix Flutter SDK Makefile
 # This Makefile provides common development tasks for the Clix Flutter SDK
 
-.PHONY: help build clean format lint lint-fix test analyze get upgrade doctor check-dependencies all run-ios build-ios run-android build-android
+.PHONY: help build clean format lint lint-fix test analyze get upgrade doctor check-dependencies all run-ios build-ios run-android build-android generate
 
 # Default target - show help
 help:
@@ -18,6 +18,7 @@ help:
 	@echo "  upgrade              - Upgrade package dependencies"
 	@echo "  doctor               - Check Flutter/Dart installation"
 	@echo "  check-dependencies   - Check for dependency issues"
+	@echo "  generate             - Generate code using build_runner"
 	@echo "  all                  - Run format, lint-fix, test, and build"
 	@echo "  build-ios            - Build the iOS version of the basic_app"
 	@echo "  run-ios              - Run the iOS version of the basic_app in simulator"
@@ -35,6 +36,7 @@ help:
 build:
 	@echo "🔨 Building Clix Flutter SDK..."
 	@flutter packages get
+	@dart run build_runner build --delete-conflicting-outputs
 	@flutter analyze --no-pub --no-fatal-warnings lib/
 	@echo "✅ SDK build completed successfully"
 
@@ -143,3 +145,9 @@ run-android:
 	@cd samples/basic_app && flutter pub get
 	@cd samples/basic_app && flutter run -d android
 	@echo "✅ Android app launched successfully"
+
+# Generate code using build_runner
+generate:
+	@echo "⚙️ Generating code with build_runner..."
+	@dart run build_runner build --delete-conflicting-outputs
+	@echo "✅ Code generation completed"

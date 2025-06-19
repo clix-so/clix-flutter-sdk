@@ -1,0 +1,20 @@
+# Exclude samples directory from published package
+samples/
+
+# Exclude development and build files
+Makefile
+segment.md
+tool/
+
+# Exclude IDE and development files
+.vscode/
+.idea/
+*.iml
+
+# Exclude git files
+.gitignore
+.gitattributes
+
+# Exclude documentation that's not needed in the package
+iOS_INTEGRATION.md
+CONTRIBUTING.md
