@@ -10,12 +10,12 @@ on:
       - "README.md"
 
 jobs:
-  test:
-    name: Test
+  build:
     runs-on: ubuntu-latest
 
     steps:
-    - uses: actions/checkout@v4
+    - name: Checkout code
+      uses: actions/checkout@v4
 
     - name: Setup Flutter
       uses: subosito/flutter-action@v2
@@ -26,14 +26,14 @@ jobs:
     - name: Install dependencies
       run: make get
 
-    - name: Format check
+    - name: Run Format Check
       run: make format
 
-    - name: Lint
+    - name: Run Lint
       run: make lint
 
-    - name: Test
+    - name: Run Tests
       run: make test
 
-    - name: Build
+    - name: Run Build
       run: make build

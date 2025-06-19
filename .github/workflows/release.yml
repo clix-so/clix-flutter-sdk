@@ -42,10 +42,10 @@ jobs:
       - name: Generate code
         run: make generate
 
-      - name: Run tests
+      - name: Run Tests
         run: make test
 
-      - name: Build package
+      - name: Run Build
         run: make build
 
       - name: Read Changelog
@@ -65,10 +65,10 @@ jobs:
           allowUpdates: true
           token: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Setup pub credentials
+      - name: Setup Pub Credentials
         run: |
           mkdir -p ~/.config/dart
           echo '${{ secrets.PUB_CREDENTIALS }}' > ~/.config/dart/pub-credentials.json
 
-      - name: Publish to pub.dev
+      - name: Release to pub.dev
         run: dart pub publish --force
