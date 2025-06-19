@@ -44,7 +44,8 @@ class ClixDevice {
 
   Map<String, dynamic> toJson() => _$ClixDeviceToJson(this);
 
-  factory ClixDevice.fromJson(Map<String, dynamic> json) => _$ClixDeviceFromJson(json);
+  factory ClixDevice.fromJson(Map<String, dynamic> json) =>
+      _$ClixDeviceFromJson(json);
 
   ClixDevice copyWith({
     String? id,
@@ -80,7 +81,8 @@ class ClixDevice {
       sdkType: sdkType ?? this.sdkType,
       sdkVersion: sdkVersion ?? this.sdkVersion,
       adId: adId ?? this.adId,
-      isPushPermissionGranted: isPushPermissionGranted ?? this.isPushPermissionGranted,
+      isPushPermissionGranted:
+          isPushPermissionGranted ?? this.isPushPermissionGranted,
       pushToken: pushToken ?? this.pushToken,
       pushTokenType: pushTokenType ?? this.pushTokenType,
     );

@@ -15,7 +15,8 @@ enum ClixError implements Exception {
   }
 
   static ClixErrorWithCause decodingError(String underlyingError) {
-    return ClixErrorWithCause._('Failed to decode response body: $underlyingError');
+    return ClixErrorWithCause._(
+        'Failed to decode response body: $underlyingError');
   }
 
   static ClixErrorWithCause unknownErrorWithReason(String reason) {

@@ -8,7 +8,8 @@ class ClixLogger {
     _logLevel = level;
   }
 
-  static void log({required ClixLogLevel level, required String message, Object? error}) {
+  static void log(
+      {required ClixLogLevel level, required String message, Object? error}) {
     if (level > _logLevel) {
       return;
     }

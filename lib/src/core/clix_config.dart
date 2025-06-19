@@ -21,5 +21,6 @@ class ClixConfig {
 
   Map<String, dynamic> toJson() => _$ClixConfigToJson(this);
 
-  factory ClixConfig.fromJson(Map<String, dynamic> json) => _$ClixConfigFromJson(json);
+  factory ClixConfig.fromJson(Map<String, dynamic> json) =>
+      _$ClixConfigFromJson(json);
 }

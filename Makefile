@@ -51,7 +51,7 @@ clean:
 # Format Dart code
 format:
 	@echo "🎨 Formatting Dart code..."
-	@dart format --set-exit-if-changed lib/ test/ samples/
+	@dart format --set-exit-if-changed lib/ samples/ $(shell [ -d test ] && echo test/)
 	@echo "✅ Code formatting completed"
 
 # Run code analysis (lint)
@@ -70,7 +70,7 @@ lint-fix:
 # Run tests with coverage
 test:
 	@echo "🧪 Running tests..."
-	@flutter test --coverage
+	@if [ -d test ]; then flutter test --coverage; else echo "No test directory found, skipping tests"; fi
 	@echo "✅ Tests completed"
 
 # Run comprehensive code analysis

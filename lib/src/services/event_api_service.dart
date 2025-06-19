@@ -14,7 +14,7 @@ class EventAPIService {
   }) async {
     try {
       ClixLogger.debug('Tracking event: $name for device: $deviceId');
-      
+
       final eventRequestBody = {
         'device_id': deviceId,
         'name': name,
@@ -30,12 +30,13 @@ class EventAPIService {
           'events': [eventRequestBody]
         },
       );
-      
+
       if (response.statusCode < 200 || response.statusCode >= 300) {
         throw Exception('HTTP ${response.statusCode}: ${response.body}');
       }
 
-      ClixLogger.info('Event tracked successfully: $name for device: $deviceId');
+      ClixLogger.info(
+          'Event tracked successfully: $name for device: $deviceId');
     } catch (e) {
       ClixLogger.error('Failed to track event: $name for device: $deviceId', e);
       rethrow;

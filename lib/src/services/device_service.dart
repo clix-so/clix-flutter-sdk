@@ -33,7 +33,7 @@ class DeviceService {
     if (existingId != null) {
       return existingId;
     }
-    
+
     const uuid = Uuid();
     final newId = uuid.v4();
     await _storageService.set<String>(_deviceIdKey, newId);
@@ -50,7 +50,8 @@ class DeviceService {
       ClixLogger.info('Project user ID set: $projectUserId');
     } catch (e) {
       ClixLogger.error('Failed to set project user ID', e);
-      throw ClixError.unknownErrorWithReason('Failed to set project user ID: $e');
+      throw ClixError.unknownErrorWithReason(
+          'Failed to set project user ID: $e');
     }
   }
 
@@ -61,16 +62,18 @@ class DeviceService {
       ClixLogger.info('Project user ID removed');
     } catch (e) {
       ClixLogger.error('Failed to remove project user ID', e);
-      throw ClixError.unknownErrorWithReason('Failed to remove project user ID: $e');
+      throw ClixError.unknownErrorWithReason(
+          'Failed to remove project user ID: $e');
     }
   }
 
   Future<void> updateUserProperties(Map<String, dynamic> properties) async {
     try {
       final userProperties = properties.entries
-          .map((entry) => ClixUserProperty.of(name: entry.key, value: entry.value))
+          .map((entry) =>
+              ClixUserProperty.of(name: entry.key, value: entry.value))
           .toList();
-      
+
       final deviceId = await getCurrentDeviceId();
       await _deviceAPIService.upsertUserProperties(
         deviceId: deviceId,
@@ -80,7 +83,8 @@ class DeviceService {
       ClixLogger.info('User properties updated: ${properties.keys.join(', ')}');
     } catch (e) {
       ClixLogger.error('Failed to update user properties', e);
-      throw ClixError.unknownErrorWithReason('Failed to update user properties: $e');
+      throw ClixError.unknownErrorWithReason(
+          'Failed to update user properties: $e');
     }
   }
 
@@ -95,19 +99,20 @@ class DeviceService {
       ClixLogger.info('User properties removed: ${names.join(', ')}');
     } catch (e) {
       ClixLogger.error('Failed to remove user properties', e);
-      throw ClixError.unknownErrorWithReason('Failed to remove user properties: $e');
+      throw ClixError.unknownErrorWithReason(
+          'Failed to remove user properties: $e');
     }
   }
 
   Future<void> upsertToken(String token, {String tokenType = 'FCM'}) async {
     try {
       await _tokenService.saveToken(token);
-      
+
       final deviceId = await getCurrentDeviceId();
       final device = await createDevice(deviceId: deviceId, token: token);
-      
+
       await _deviceAPIService.registerDevice(device: device);
-      
+
       ClixLogger.info('Token upserted: $tokenType');
     } catch (e) {
       ClixLogger.error('Failed to upsert token', e);
@@ -115,16 +120,17 @@ class DeviceService {
     }
   }
 
-  static Future<ClixDevice> createDevice({required String deviceId, String? token}) async {
+  static Future<ClixDevice> createDevice(
+      {required String deviceId, String? token}) async {
     final deviceInfo = DeviceInfoPlugin();
     final packageInfo = await PackageInfo.fromPlatform();
-    
+
     String platform;
     String model;
     String manufacturer;
     String osName;
     String osVersion;
-    
+
     if (Platform.isAndroid) {
       final androidInfo = await deviceInfo.androidInfo;
       platform = 'Android';
@@ -146,22 +152,24 @@ class DeviceService {
       osName = Platform.operatingSystem;
       osVersion = Platform.operatingSystemVersion;
     }
-    
+
     final locale = Platform.localeName.split('_');
     final localeLanguage = locale.isNotEmpty ? locale[0] : 'en';
     final localeRegion = locale.length > 1 ? locale[1] : 'US';
-    
+
     final timezone = DateTime.now().timeZoneName;
-    
+
     bool isPushPermissionGranted = false;
     try {
-      final settings = await FirebaseMessaging.instance.getNotificationSettings();
-      isPushPermissionGranted = settings.authorizationStatus == AuthorizationStatus.authorized ||
-                               settings.authorizationStatus == AuthorizationStatus.provisional;
+      final settings =
+          await FirebaseMessaging.instance.getNotificationSettings();
+      isPushPermissionGranted =
+          settings.authorizationStatus == AuthorizationStatus.authorized ||
+              settings.authorizationStatus == AuthorizationStatus.provisional;
     } catch (e) {
       ClixLogger.error('Failed to get push permission status', e);
     }
-    
+
     return ClixDevice(
       id: deviceId,
       platform: platform,

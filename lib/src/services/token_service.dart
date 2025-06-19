@@ -6,7 +6,7 @@ class TokenService {
   static const String _currentTokenKey = 'clix_current_push_token';
   static const String _previousTokensKey = 'clix_push_tokens';
 
-  TokenService({required StorageService storageService}) 
+  TokenService({required StorageService storageService})
       : _storageService = storageService;
 
   Future<String?> getCurrentToken() async {
@@ -20,9 +20,10 @@ class TokenService {
 
   Future<List<String>> getPreviousTokens() async {
     try {
-      final result = await _storageService.get<List<dynamic>>(_previousTokensKey);
+      final result =
+          await _storageService.get<List<dynamic>>(_previousTokensKey);
       if (result == null) return [];
-      
+
       return result.map((item) => item.toString()).toList();
     } catch (e) {
       ClixLogger.error('Failed to get previous tokens', e);
@@ -68,7 +69,8 @@ class TokenService {
   }
 
   String convertTokenToString(List<int> deviceToken) {
-    final tokenParts = deviceToken.map((data) => data.toRadixString(16).padLeft(2, '0'));
+    final tokenParts =
+        deviceToken.map((data) => data.toRadixString(16).padLeft(2, '0'));
     return tokenParts.join();
   }
 

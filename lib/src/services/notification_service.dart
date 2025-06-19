@@ -18,13 +18,14 @@ import 'token_service.dart';
 
 class NotificationService {
   static const String _defaultNotificationIcon = '@mipmap/ic_launcher';
-  
+
   static final NotificationService _instance = NotificationService._internal();
   factory NotificationService() => _instance;
   NotificationService._internal();
 
   final FirebaseMessaging _firebaseMessaging = FirebaseMessaging.instance;
-  final FlutterLocalNotificationsPlugin _localNotifications = FlutterLocalNotificationsPlugin();
+  final FlutterLocalNotificationsPlugin _localNotifications =
+      FlutterLocalNotificationsPlugin();
 
   EventService? _eventService;
   StorageService? _storageService;
@@ -60,7 +61,8 @@ class NotificationService {
       await _initializeLocalNotifications();
       final settings = await _requestPermissions();
       if (settings.authorizationStatus == AuthorizationStatus.denied) {
-        ClixLogger.warn('Push notification permission denied. User needs to enable it manually in Settings.');
+        ClixLogger.warn(
+            'Push notification permission denied. User needs to enable it manually in Settings.');
       }
       _setupMessageHandlers();
 
@@ -71,7 +73,6 @@ class NotificationService {
         ClixLogger.info('Skipping token setup due to denied permissions');
       }
 
-
       _isInitialized = true;
       ClixLogger.info('Notification service initialized successfully');
     } catch (e) {
@@ -81,7 +82,8 @@ class NotificationService {
   }
 
   Future<void> _initializeLocalNotifications() async {
-    const androidSettings = AndroidInitializationSettings(_defaultNotificationIcon);
+    const androidSettings =
+        AndroidInitializationSettings(_defaultNotificationIcon);
     const iosSettings = DarwinInitializationSettings(
       requestAlertPermission: false,
       requestBadgePermission: false,
@@ -108,7 +110,8 @@ class NotificationService {
       );
 
       await _localNotifications
-          .resolvePlatformSpecificImplementation<AndroidFlutterLocalNotificationsPlugin>()
+          .resolvePlatformSpecificImplementation<
+              AndroidFlutterLocalNotificationsPlugin>()
           ?.createNotificationChannel(androidChannel);
     }
   }
@@ -142,10 +145,11 @@ class NotificationService {
       criticalAlert: false,
     );
 
-    ClixLogger.info('Notification permission status: ${settings.authorizationStatus}');
+    ClixLogger.info(
+        'Notification permission status: ${settings.authorizationStatus}');
 
-    await _storageService?.set<String>('notification_permission_status', settings.authorizationStatus.name);
-
+    await _storageService?.set<String>(
+        'notification_permission_status', settings.authorizationStatus.name);
 
     return settings;
   }
@@ -155,14 +159,14 @@ class NotificationService {
     FirebaseMessaging.onMessage.listen(_onForegroundMessage);
     FirebaseMessaging.onMessageOpenedApp.listen(_onMessageOpenedApp);
     _handleInitialMessage();
-
   }
 
   Future<void> _onForegroundMessage(RemoteMessage message) async {
     try {
       ClixLogger.info('Received foreground message: ${message.messageId}');
       ClixLogger.debug('Message data: ${message.data}');
-      ClixLogger.debug('Message notification: title="${message.notification?.title}", body="${message.notification?.body}"');
+      ClixLogger.debug(
+          'Message notification: title="${message.notification?.title}", body="${message.notification?.body}"');
 
       final clixPayload = parseClixPayload(message.data);
       if (clixPayload != null) {
@@ -193,14 +197,14 @@ class NotificationService {
     try {
       final initialMessage = await _firebaseMessaging.getInitialMessage();
       if (initialMessage != null) {
-        ClixLogger.info('App launched from notification: ${initialMessage.messageId}');
+        ClixLogger.info(
+            'App launched from notification: ${initialMessage.messageId}');
         await _handleNotificationTap(initialMessage.data);
       }
     } catch (e) {
       ClixLogger.error('Failed to handle initial message', e);
     }
   }
-
 
   Future<void> _handleNotificationTap(Map<String, dynamic> data) async {
     try {
@@ -225,9 +229,9 @@ class NotificationService {
       }
 
       url ??= data['landing_url'] as String? ??
-             data['url'] as String? ??
-             data['link'] as String? ??
-             data['click_action'] as String?;
+          data['url'] as String? ??
+          data['link'] as String? ??
+          data['click_action'] as String?;
 
       if (url != null && url.isNotEmpty) {
         ClixLogger.info('Opening URL from notification: $url');
@@ -255,7 +259,8 @@ class NotificationService {
               await launchUrl(uri, mode: LaunchMode.platformDefault);
               ClixLogger.info('URL opened with platform default mode: $url');
             } catch (e) {
-              ClixLogger.error('Failed to launch URL with platform default mode', e);
+              ClixLogger.error(
+                  'Failed to launch URL with platform default mode', e);
             }
           }
         } catch (e) {
@@ -266,8 +271,6 @@ class NotificationService {
       ClixLogger.error('Failed to handle URL navigation', e);
     }
   }
-
-
 
   Future<String?> getCurrentToken() async {
     try {
@@ -332,7 +335,13 @@ class NotificationService {
         }
       }
 
-      final clixKeys = ['message_id', 'campaign_id', 'user_id', 'device_id', 'tracking_id'];
+      final clixKeys = [
+        'message_id',
+        'campaign_id',
+        'user_id',
+        'device_id',
+        'tracking_id'
+      ];
       if (clixKeys.any((key) => userInfo.containsKey(key))) {
         return userInfo;
       }
@@ -349,7 +358,8 @@ class NotificationService {
     return clixPayload?['message_id'] as String?;
   }
 
-  Future<void> _showClixNotification(RemoteMessage message, Map<String, dynamic> clixPayload) async {
+  Future<void> _showClixNotification(
+      RemoteMessage message, Map<String, dynamic> clixPayload) async {
     try {
       if (message.notification != null) {
         ClixLogger.debug('FCM notification exists, letting system handle it');
@@ -357,7 +367,8 @@ class NotificationService {
       }
 
       final notificationContent = _extractNotificationContent(clixPayload);
-      ClixLogger.debug('Showing Clix notification: ${notificationContent.title} - ${notificationContent.body}');
+      ClixLogger.debug(
+          'Showing Clix notification: ${notificationContent.title} - ${notificationContent.body}');
 
       final imagePath = notificationContent.imageUrl != null
           ? await _downloadImage(notificationContent.imageUrl!)
@@ -379,15 +390,13 @@ class NotificationService {
     }
   }
 
-
-
-
   Future<bool> requestNotificationPermission() async {
     try {
       ClixLogger.info('Requesting notification permission');
 
       final settings = await _requestPermissions();
-      final granted = settings.authorizationStatus == AuthorizationStatus.authorized;
+      final granted =
+          settings.authorizationStatus == AuthorizationStatus.authorized;
 
       ClixLogger.info('Notification permission granted: $granted');
       return granted;
@@ -396,7 +405,6 @@ class NotificationService {
       return false;
     }
   }
-
 
   Future<void> setNotificationPreferences({
     required bool enabled,
@@ -409,7 +417,8 @@ class NotificationService {
         'timestamp': DateTime.now().millisecondsSinceEpoch,
       };
 
-      await _storageService?.set<Map<String, dynamic>>('clix_notification_settings', settings);
+      await _storageService?.set<Map<String, dynamic>>(
+          'clix_notification_settings', settings);
       ClixLogger.info('Notification preferences saved: enabled=$enabled');
     } catch (e) {
       ClixLogger.error('Failed to set notification preferences', e);
@@ -451,7 +460,6 @@ class NotificationService {
     }
   }
 
-
   Future<void> reset() async {
     try {
       await _storageService?.remove('clix_notification_settings');
@@ -479,13 +487,15 @@ class NotificationService {
       importance: Importance.high,
       priority: Priority.high,
       icon: _defaultNotificationIcon,
-      largeIcon: imagePath != null ? FilePathAndroidBitmap(imagePath) : const DrawableResourceAndroidBitmap(_defaultNotificationIcon),
+      largeIcon: imagePath != null
+          ? FilePathAndroidBitmap(imagePath)
+          : const DrawableResourceAndroidBitmap(_defaultNotificationIcon),
       styleInformation: imagePath != null
-        ? BigPictureStyleInformation(
-            FilePathAndroidBitmap(imagePath),
-            largeIcon: FilePathAndroidBitmap(imagePath),
-          )
-        : null,
+          ? BigPictureStyleInformation(
+              FilePathAndroidBitmap(imagePath),
+              largeIcon: FilePathAndroidBitmap(imagePath),
+            )
+          : null,
     );
 
     const iosDetails = DarwinNotificationDetails(
@@ -500,7 +510,8 @@ class NotificationService {
     );
   }
 
-  static _NotificationContent _extractNotificationContent(Map<String, dynamic> payload) {
+  static _NotificationContent _extractNotificationContent(
+      Map<String, dynamic> payload) {
     return _NotificationContent(
       title: payload['title'] as String? ?? 'New Message',
       body: payload['body'] as String? ?? '',
@@ -508,7 +519,8 @@ class NotificationService {
     );
   }
 
-  static Map<String, dynamic> _extractTrackingProperties(Map<String, dynamic>? clixPayload) {
+  static Map<String, dynamic> _extractTrackingProperties(
+      Map<String, dynamic>? clixPayload) {
     if (clixPayload == null) return {};
 
     final properties = <String, dynamic>{};
@@ -529,7 +541,8 @@ class NotificationService {
     return properties;
   }
 
-  Future<void> _trackPushEvent(String eventType, Map<String, dynamic> clixPayload) async {
+  Future<void> _trackPushEvent(
+      String eventType, Map<String, dynamic> clixPayload) async {
     final properties = _extractTrackingProperties(clixPayload);
     final messageId = clixPayload['message_id'] as String?;
 
@@ -542,10 +555,12 @@ class NotificationService {
     ClixLogger.info('$eventType tracked: $messageId');
   }
 
-  Future<void> _trackPushNotificationReceived(Map<String, dynamic> clixPayload) async {
+  Future<void> _trackPushNotificationReceived(
+      Map<String, dynamic> clixPayload) async {
     final messageId = clixPayload['message_id'] as String?;
     if (messageId == null) {
-      ClixLogger.warn('No message_id found in payload, skipping event tracking');
+      ClixLogger.warn(
+          'No message_id found in payload, skipping event tracking');
       return;
     }
 
@@ -556,11 +571,13 @@ class NotificationService {
     }
   }
 
-  Future<void> _trackPushEventInBackground(Map<String, dynamic> clixPayload, String messageId) async {
+  Future<void> _trackPushEventInBackground(
+      Map<String, dynamic> clixPayload, String messageId) async {
     try {
       final storageService = StorageService();
 
-      final configData = await storageService.get<Map<String, dynamic>>('clix_config');
+      final configData =
+          await storageService.get<Map<String, dynamic>>('clix_config');
       if (configData == null) {
         ClixLogger.error('No Clix config found in storage');
         return;
@@ -568,7 +585,8 @@ class NotificationService {
 
       final deviceId = await storageService.get<String>('clix_device_id');
       if (deviceId == null) {
-        ClixLogger.warn('No device ID found in storage, generating new device ID');
+        ClixLogger.warn(
+            'No device ID found in storage, generating new device ID');
         const uuid = Uuid();
         final newDeviceId = uuid.v4();
         await storageService.set<String>('clix_device_id', newDeviceId);
@@ -602,7 +620,8 @@ class NotificationService {
         messageId: messageId,
       );
 
-      ClixLogger.info('PUSH_NOTIFICATION_RECEIVED event tracked via EventService');
+      ClixLogger.info(
+          'PUSH_NOTIFICATION_RECEIVED event tracked via EventService');
     } catch (e) {
       ClixLogger.error('Error tracking event via EventService', e);
     }
@@ -625,7 +644,8 @@ class NotificationService {
 
       final response = await http.get(uri);
       if (response.statusCode == 200) {
-        final fileName = 'notification_image_${DateTime.now().millisecondsSinceEpoch}.jpg';
+        final fileName =
+            'notification_image_${DateTime.now().millisecondsSinceEpoch}.jpg';
         final file = File('${Directory.systemTemp.path}/$fileName');
         await file.writeAsBytes(response.bodyBytes);
         ClixLogger.info('Image downloaded: ${file.path}');
@@ -637,7 +657,8 @@ class NotificationService {
     return null;
   }
 
-  Future<String?> _downloadImage(String imageUrl) => _downloadNotificationImage(imageUrl);
+  Future<String?> _downloadImage(String imageUrl) =>
+      _downloadNotificationImage(imageUrl);
 
   Future<String?> _getOrFetchToken() async {
     if (_tokenService != null) {
@@ -691,7 +712,8 @@ Future<void> _firebaseMessagingBackgroundHandler(RemoteMessage message) async {
     final storageService = StorageService();
     final clixPayload = _parseClixPayloadStatic(message.data);
 
-    await _storeBackgroundNotificationData(storageService, message, clixPayload);
+    await _storeBackgroundNotificationData(
+        storageService, message, clixPayload);
 
     if (clixPayload != null) {
       await _trackPushNotificationReceivedInBackground(clixPayload);
@@ -705,7 +727,8 @@ Future<void> _firebaseMessagingBackgroundHandler(RemoteMessage message) async {
   }
 }
 
-Future<void> _trackPushNotificationReceivedInBackground(Map<String, dynamic> clixPayload) async {
+Future<void> _trackPushNotificationReceivedInBackground(
+    Map<String, dynamic> clixPayload) async {
   final messageId = clixPayload['message_id'] as String?;
   if (messageId == null) {
     ClixLogger.warn('No message_id found in payload, skipping event tracking');
@@ -715,7 +738,8 @@ Future<void> _trackPushNotificationReceivedInBackground(Map<String, dynamic> cli
   try {
     final storageService = StorageService();
 
-    final configData = await storageService.get<Map<String, dynamic>>('clix_config');
+    final configData =
+        await storageService.get<Map<String, dynamic>>('clix_config');
     if (configData == null) {
       ClixLogger.error('No Clix config found in storage');
       return;
@@ -723,14 +747,16 @@ Future<void> _trackPushNotificationReceivedInBackground(Map<String, dynamic> cli
 
     final deviceId = await storageService.get<String>('clix_device_id');
     if (deviceId == null) {
-      ClixLogger.warn('No device ID found in storage, generating new device ID');
+      ClixLogger.warn(
+          'No device ID found in storage, generating new device ID');
       const uuid = Uuid();
       final newDeviceId = uuid.v4();
       await storageService.set<String>('clix_device_id', newDeviceId);
     }
 
     final config = ClixConfig.fromJson(configData);
-    final properties = NotificationService._extractTrackingProperties(clixPayload);
+    final properties =
+        NotificationService._extractTrackingProperties(clixPayload);
 
     final deviceAPIService = DeviceAPIService(
       apiClient: ClixAPIClient(config: config),
@@ -757,7 +783,8 @@ Future<void> _trackPushNotificationReceivedInBackground(Map<String, dynamic> cli
       messageId: messageId,
     );
 
-    ClixLogger.info('PUSH_NOTIFICATION_RECEIVED event tracked via EventService in background');
+    ClixLogger.info(
+        'PUSH_NOTIFICATION_RECEIVED event tracked via EventService in background');
   } catch (e) {
     ClixLogger.error('Error tracking event via EventService in background', e);
   }
@@ -775,7 +802,13 @@ Map<String, dynamic>? _parseClixPayloadStatic(Map<String, dynamic> userInfo) {
       }
     }
 
-    final clixKeys = ['message_id', 'campaign_id', 'user_id', 'device_id', 'tracking_id'];
+    final clixKeys = [
+      'message_id',
+      'campaign_id',
+      'user_id',
+      'device_id',
+      'tracking_id'
+    ];
     if (clixKeys.any((key) => userInfo.containsKey(key))) {
       return userInfo;
     }
@@ -800,10 +833,9 @@ Future<void> _storeBackgroundNotificationData(
     'trackingId': clixPayload?['tracking_id'] as String?,
   };
 
-  await storageService.set<Map<String, dynamic>>('last_background_notification', notificationData);
+  await storageService.set<Map<String, dynamic>>(
+      'last_background_notification', notificationData);
 }
-
-
 
 Future<void> _showBackgroundNotification(
   RemoteMessage message,
@@ -831,8 +863,10 @@ Future<void> _showBackgroundNotification(
   ClixLogger.info('Background notification shown: ${content.title}');
 }
 
-Future<void> _initializeBackgroundNotifications(FlutterLocalNotificationsPlugin plugin) async {
-  const androidSettings = AndroidInitializationSettings(NotificationService._defaultNotificationIcon);
+Future<void> _initializeBackgroundNotifications(
+    FlutterLocalNotificationsPlugin plugin) async {
+  const androidSettings = AndroidInitializationSettings(
+      NotificationService._defaultNotificationIcon);
   const initSettings = InitializationSettings(android: androidSettings);
   await plugin.initialize(initSettings);
 
@@ -845,11 +879,10 @@ Future<void> _initializeBackgroundNotifications(FlutterLocalNotificationsPlugin 
   );
 
   await plugin
-      .resolvePlatformSpecificImplementation<AndroidFlutterLocalNotificationsPlugin>()
+      .resolvePlatformSpecificImplementation<
+          AndroidFlutterLocalNotificationsPlugin>()
       ?.createNotificationChannel(androidChannel);
 }
-
-
 
 NotificationDetails _createBackgroundNotificationDetails(String? imagePath) {
   final androidDetails = AndroidNotificationDetails(
@@ -859,15 +892,17 @@ NotificationDetails _createBackgroundNotificationDetails(String? imagePath) {
     importance: Importance.high,
     priority: Priority.high,
     icon: NotificationService._defaultNotificationIcon,
-    largeIcon: imagePath != null ? FilePathAndroidBitmap(imagePath) : const DrawableResourceAndroidBitmap(NotificationService._defaultNotificationIcon),
+    largeIcon: imagePath != null
+        ? FilePathAndroidBitmap(imagePath)
+        : const DrawableResourceAndroidBitmap(
+            NotificationService._defaultNotificationIcon),
     styleInformation: imagePath != null
-      ? BigPictureStyleInformation(
-          FilePathAndroidBitmap(imagePath),
-          largeIcon: FilePathAndroidBitmap(imagePath),
-        )
-      : null,
+        ? BigPictureStyleInformation(
+            FilePathAndroidBitmap(imagePath),
+            largeIcon: FilePathAndroidBitmap(imagePath),
+          )
+        : null,
   );
 
   return NotificationDetails(android: androidDetails);
 }
-

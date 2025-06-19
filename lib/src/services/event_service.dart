@@ -9,8 +9,8 @@ class EventService {
   EventService({
     required EventAPIService eventAPIService,
     required DeviceService deviceService,
-  }) : _eventAPIService = eventAPIService,
-       _deviceService = deviceService;
+  })  : _eventAPIService = eventAPIService,
+        _deviceService = deviceService;
 
   Future<void> trackEvent(
     String name, {
@@ -19,7 +19,7 @@ class EventService {
   }) async {
     try {
       ClixLogger.debug('Tracking event: $name');
-      
+
       final deviceId = await _deviceService.getCurrentDeviceId();
 
       final cleanProperties = <String, dynamic>{};
@@ -40,7 +40,8 @@ class EventService {
 
       ClixLogger.info('Event tracked successfully: $name');
     } catch (e) {
-      ClixLogger.error("Failed to track event '$name': $e. Make sure Clix.initialize() has been called.");
+      ClixLogger.error(
+          "Failed to track event '$name': $e. Make sure Clix.initialize() has been called.");
       rethrow;
     }
   }

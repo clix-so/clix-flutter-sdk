@@ -13,7 +13,6 @@ enum PropertyType {
 
 @JsonSerializable()
 class ClixUserProperty {
-
   final String name;
   @JsonKey(name: 'value_string')
   final dynamic valueString;

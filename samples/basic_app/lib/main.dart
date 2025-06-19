@@ -11,7 +11,6 @@ void main() async {
 
   await Firebase.initializeApp();
 
-
   await Clix.initialize(const ClixConfig(
     projectId: ClixInfo.projectId,
     apiKey: ClixInfo.apiKey,
@@ -229,7 +228,6 @@ class _HomePageState extends State<HomePage> {
                   ),
                 ),
                 const SizedBox(height: 16),
-
                 Container(
                   margin: const EdgeInsets.symmetric(horizontal: 20),
                   padding: const EdgeInsets.all(24),
@@ -248,9 +246,7 @@ class _HomePageState extends State<HomePage> {
                       const SizedBox(height: 16),
                       _buildInfoRow('Push Token:',
                           _pushToken != null ? _pushToken! : 'Not available'),
-
                       const SizedBox(height: 32),
-
                       const Text(
                         'User ID',
                         style: TextStyle(
@@ -260,7 +256,6 @@ class _HomePageState extends State<HomePage> {
                         ),
                       ),
                       const SizedBox(height: 12),
-
                       Row(
                         children: [
                           Expanded(
@@ -277,9 +272,7 @@ class _HomePageState extends State<HomePage> {
                           ),
                         ],
                       ),
-
                       const SizedBox(height: 32),
-
                       const Text(
                         'User Property Key',
                         style: TextStyle(
@@ -289,7 +282,6 @@ class _HomePageState extends State<HomePage> {
                         ),
                       ),
                       const SizedBox(height: 12),
-
                       TextField(
                         controller: _propertyKeyController,
                         decoration: const InputDecoration(
@@ -297,9 +289,7 @@ class _HomePageState extends State<HomePage> {
                         ),
                         style: const TextStyle(color: Colors.white),
                       ),
-
                       const SizedBox(height: 24),
-
                       const Text(
                         'User Property Value',
                         style: TextStyle(
@@ -309,7 +299,6 @@ class _HomePageState extends State<HomePage> {
                         ),
                       ),
                       const SizedBox(height: 12),
-
                       TextField(
                         controller: _propertyValueController,
                         decoration: const InputDecoration(
@@ -317,9 +306,7 @@ class _HomePageState extends State<HomePage> {
                         ),
                         style: const TextStyle(color: Colors.white),
                       ),
-
                       const SizedBox(height: 32),
-
                       SizedBox(
                         width: double.infinity,
                         child: ElevatedButton(

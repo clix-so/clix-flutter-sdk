@@ -44,11 +44,13 @@ class ClixAPIClient {
   Uri _buildUri(String path, Map<String, dynamic>? queryParameters) {
     final url = _buildUrl(path);
     final uri = Uri.parse(url);
-    
+
     if (queryParameters != null && queryParameters.isNotEmpty) {
-      return uri.replace(queryParameters: queryParameters.map((key, value) => MapEntry(key, value.toString())));
+      return uri.replace(
+          queryParameters: queryParameters
+              .map((key, value) => MapEntry(key, value.toString())));
     }
-    
+
     return uri;
   }
 
@@ -68,10 +70,10 @@ class ClixAPIClient {
     ClixLogger.debug('Making request to: $uri');
 
     final response = await _httpClient.get(uri, headers: requestHeaders);
-    
+
     ClixLogger.debug('Response Status: ${response.statusCode}');
     ClixLogger.debug('Response Body: ${response.body}');
-    
+
     return response;
   }
 
@@ -97,7 +99,7 @@ class ClixAPIClient {
     }
 
     final encodedBody = body != null ? jsonEncode(body) : null;
-    
+
     final response = await _httpClient.post(
       uri,
       headers: requestHeaders,
@@ -126,7 +128,7 @@ class ClixAPIClient {
     ClixLogger.debug('API PUT $path');
 
     final encodedBody = body != null ? jsonEncode(body) : null;
-    
+
     final response = await _httpClient.put(
       uri,
       headers: requestHeaders,
