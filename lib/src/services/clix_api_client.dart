@@ -21,7 +21,7 @@ class ClixAPIClient {
       'Content-Type': 'application/json',
       'X-Clix-Project-ID': _config.projectId,
       'X-Clix-API-Key': _config.apiKey,
-      'User-Agent': 'Clix-Flutter-SDK/$version',
+      'User-Agent': 'clix-flutter-sdk/$version',
     };
 
     if (_config.extraHeaders != null) {
