@@ -7,7 +7,7 @@ Clix Flutter SDK is a powerful tool for managing push notifications and user eve
 Add this to your package's `pubspec.yaml` file:
 ```yaml
 dependencies:
-  clix_flutter: ^0.0.1
+  clix_flutter: ^0.0.2
 ```
 
 Then run:
