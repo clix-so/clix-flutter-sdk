@@ -1,0 +1,54 @@
+# Operating System Files
+.DS_Store
+*.swp
+.swiftpm/
+
+# Editor and IDE Files
+## IntelliJ related
+*.iml
+*.ipr
+*.iws
+.idea/
+
+## VS Code
+#.vscode/
+
+## Atom
+.atom/
+.buildlog/
+.build/
+.history
+.svn/
+
+# Dart/Flutter Related
+## Build and dependency files
+.dart_tool/
+.packages
+.pub/
+.pub-cache/
+/build/
+**/doc/api/
+
+## Flutter specific
+.flutter-plugins
+.flutter-plugins-dependencies
+**/ios/Flutter/.last_build_id
+migrate_working_dir/
+lib/generated_plugin_registrant.dart
+
+# Android Related
+/android/app/debug
+/android/app/profile
+/android/app/release
+.gradle/
+
+# Symbolication Related
+app.*.symbols
+
+# Obfuscation Related
+app.*.map.json
+
+# Miscellaneous
+*.class
+*.log
+*.pyc

@@ -1,0 +1,74 @@
+name: Release
+run-name: "Release ${{inputs.version}}"
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: "Version to be released"
+        required: true
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          cache: true
+
+      - name: Validate Version
+        run: |
+          PUBSPEC_VERSION=$(grep '^version:' pubspec.yaml | sed 's/version: //')
+          INPUT_VERSION="${{ github.event.inputs.version }}"
+
+          if [ "$PUBSPEC_VERSION" != "$INPUT_VERSION" ]; then
+            echo "Error: Version mismatch!"
+            echo "pubspec.yaml contains: '$PUBSPEC_VERSION'"
+            echo "Input version is: '$INPUT_VERSION'"
+            echo "Please update the pubspec.yaml file to match the release version."
+            exit 1
+          fi
+
+          echo "Version validation passed: $INPUT_VERSION"
+
+      - name: Install dependencies
+        run: flutter pub get
+
+      - name: Generate code
+        run: make generate
+
+      - name: Run Tests
+        run: make test
+
+      - name: Run Build
+        run: make build
+
+      - name: Read Changelog
+        id: read_changelog
+        if: ${{ !endsWith(github.event.inputs.version, 'SNAPSHOT') }}
+        uses: mindsers/changelog-reader-action@v2
+        with:
+          version: ${{ github.event.inputs.version }}
+
+      - name: Create Release
+        if: steps.read_changelog.outputs.changes
+        uses: ncipollo/release-action@v1
+        with:
+          tag: ${{ github.event.inputs.version }}
+          name: ${{ github.event.inputs.version }}
+          body: ${{ steps.read_changelog.outputs.changes }}
+          allowUpdates: true
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Setup Pub Credentials
+        run: |
+          mkdir -p ~/.config/dart
+          echo '${{ secrets.PUB_CREDENTIALS }}' > ~/.config/dart/pub-credentials.json
+
+      - name: Release to pub.dev
+        run: dart pub publish --force

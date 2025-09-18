@@ -1,0 +1,47 @@
+<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+  package="so.clix">
+
+  <!-- Permissions that will be merged into the consuming app -->
+  <uses-permission android:name="android.permission.INTERNET" />
+  <uses-permission android:name="android.permission.WAKE_LOCK" />
+  <uses-permission android:name="android.permission.VIBRATE" />
+
+  <!-- Queries for url_launcher support (Android 11+) -->
+  <queries>
+    <!-- HTTP and HTTPS schemes -->
+    <intent>
+      <action android:name="android.intent.action.VIEW" />
+      <data android:scheme="https" />
+    </intent>
+    <intent>
+      <action android:name="android.intent.action.VIEW" />
+      <data android:scheme="http" />
+    </intent>
+    
+    <!-- Email scheme -->
+    <intent>
+      <action android:name="android.intent.action.VIEW" />
+      <data android:scheme="mailto" />
+    </intent>
+    
+    <!-- Phone scheme -->
+    <intent>
+      <action android:name="android.intent.action.VIEW" />
+      <data android:scheme="tel" />
+    </intent>
+    
+    <!-- SMS scheme -->
+    <intent>
+      <action android:name="android.intent.action.VIEW" />
+      <data android:scheme="sms" />
+    </intent>
+    
+    <!-- Generic browser support -->
+    <intent>
+      <action android:name="android.intent.action.VIEW" />
+      <category android:name="android.intent.category.BROWSABLE" />
+      <data android:scheme="https" />
+    </intent>
+  </queries>
+
+</manifest>
