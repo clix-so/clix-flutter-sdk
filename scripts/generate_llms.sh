@@ -118,7 +118,7 @@ if [[ -z "${INCLUDE_DIRS:-}" ]]; then
   # include any new top-level directories with target source files
   while IFS= read -r topdir; do
     case "$topdir" in
-      .git|.github|.vscode|build|.dart_tool|ios|android|gradle|.swiftpm) ;; # checked below by content
+      .git|.github|.vscode|build|.dart_tool|ios|android|gradle|.swiftpm) continue ;; # checked below by content
     esac
     if find "$topdir" -type f \( -name "*.dart" -o -name "*.kt" -o -name "*.swift" \) -print -quit >/dev/null 2>&1; then
       dirs+=("$topdir")
