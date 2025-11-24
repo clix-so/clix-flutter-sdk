@@ -15,8 +15,13 @@ import 'clix_config.dart';
 import 'clix_notification.dart';
 
 class Clix {
-  // ignore: non_constant_identifier_names, prefer_const_declarations
-  static final Notification = ClixNotification;
+  /// Notification management interface for handling push notifications,
+  /// permissions, and related functionality.
+  ///
+  /// Use this to configure notification behavior, register handlers, and
+  /// manage FCM tokens.
+  // ignore: non_constant_identifier_names
+  static final ClixNotification Notification = ClixNotification();
 
   static Clix? _shared;
   static bool _isInitializing = false;
@@ -193,6 +198,11 @@ class Clix {
 
   /// Check if SDK is initialized
   static bool get isInitialized => _shared != null;
+
+  // Internal access for ClixNotification
+  static Future<void> waitForInitialization() => _waitForInitialization();
+  static NotificationService? get notificationServiceInstance =>
+      _shared?._notificationService;
 
   /// Track event
   static Future<void> trackEvent(

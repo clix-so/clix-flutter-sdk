@@ -5,20 +5,20 @@ import 'clix.dart';
 ///
 /// Provides a central hub for configuring notification behavior, registering
 /// handlers, and managing push notifications.
+///
+/// Access this class through [Clix.Notification] only.
 class ClixNotification {
-  ClixNotification._();
-
   // Callback handlers
-  static Future<bool> Function(Map<String, dynamic>)? _onMessage;
-  static void Function(Map<String, dynamic>)? _onBackgroundMessage;
-  static void Function(Map<String, dynamic>)? _onNotificationOpened;
-  static void Function(Exception)? _onFcmTokenError;
+  Future<bool> Function(Map<String, dynamic>)? _onMessage;
+  void Function(Map<String, dynamic>)? _onBackgroundMessage;
+  void Function(Map<String, dynamic>)? _onNotificationOpened;
+  void Function(Exception)? _onFcmTokenError;
 
   /// Register a handler for foreground messages.
   ///
   /// The handler receives notification data and should return true to display
   /// the notification or false to suppress it.
-  static void onMessage(Future<bool> Function(Map<String, dynamic>) handler) {
+  void onMessage(Future<bool> Function(Map<String, dynamic>) handler) {
     _onMessage = handler;
   }
 
@@ -26,16 +26,14 @@ class ClixNotification {
   ///
   /// This handler is invoked when a notification is received while the app
   /// is in the background.
-  static void onBackgroundMessage(
-      void Function(Map<String, dynamic>) handler) {
+  void onBackgroundMessage(void Function(Map<String, dynamic>) handler) {
     _onBackgroundMessage = handler;
   }
 
   /// Register a handler for when a notification is opened/tapped.
   ///
   /// This handler is called when the user taps on a notification.
-  static void onNotificationOpened(
-      void Function(Map<String, dynamic>) handler) {
+  void onNotificationOpened(void Function(Map<String, dynamic>) handler) {
     _onNotificationOpened = handler;
   }
 
@@ -43,22 +41,35 @@ class ClixNotification {
   ///
   /// This handler is invoked when there is an error fetching or refreshing
   /// the FCM token.
-  static void onFcmTokenError(void Function(Exception) handler) {
+  void onFcmTokenError(void Function(Exception) handler) {
     _onFcmTokenError = handler;
   }
 
   /// Returns the current FCM token for this device.
-  static Future<String?> getToken() async {
-    return Clix.getPushToken();
+  Future<String?> getToken() async {
+    try {
+      await Clix.waitForInitialization();
+      return await Clix.notificationServiceInstance?.getCurrentToken();
+    } catch (e) {
+      ClixLogger.error('Failed to get token', e);
+      return null;
+    }
   }
 
   /// Deletes the current FCM token and notifies the server.
-  static Future<void> deleteToken() async {
-    return Clix.deletePushToken();
+  Future<void> deleteToken() async {
+    try {
+      await Clix.waitForInitialization();
+      await Clix.notificationServiceInstance?.deleteToken();
+      ClixLogger.debug('FCM token deleted successfully');
+    } catch (e) {
+      ClixLogger.error('Failed to delete token', e);
+      rethrow;
+    }
   }
 
   // Internal handlers for SDK use
-  static Future<bool> handleIncomingMessage(
+  Future<bool> handleIncomingMessage(
       Map<String, dynamic> notificationData) async {
     try {
       if (_onMessage != null) {
@@ -71,7 +82,7 @@ class ClixNotification {
     }
   }
 
-  static void handleBackgroundMessage(Map<String, dynamic> notificationData) {
+  void handleBackgroundMessage(Map<String, dynamic> notificationData) {
     try {
       _onBackgroundMessage?.call(notificationData);
     } catch (e) {
@@ -79,7 +90,7 @@ class ClixNotification {
     }
   }
 
-  static void handleNotificationOpened(Map<String, dynamic> notificationData) {
+  void handleNotificationOpened(Map<String, dynamic> notificationData) {
     try {
       _onNotificationOpened?.call(notificationData);
     } catch (e) {
@@ -87,7 +98,7 @@ class ClixNotification {
     }
   }
 
-  static void handleFcmTokenError(Exception error) {
+  void handleFcmTokenError(Exception error) {
     ClixLogger.error('FCM token error', error);
     _onFcmTokenError?.call(error);
   }

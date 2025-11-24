@@ -6,8 +6,8 @@ import 'package:http/http.dart' as http;
 import 'package:url_launcher/url_launcher.dart';
 import 'package:uuid/uuid.dart';
 
+import '../core/clix.dart';
 import '../core/clix_config.dart';
-import '../core/clix_notification.dart';
 import '../services/clix_api_client.dart';
 import '../services/device_api_service.dart';
 import '../services/event_api_service.dart';
@@ -175,7 +175,7 @@ class NotificationService {
 
         // Call onMessage handler and check if we should display
         final shouldDisplay =
-            await ClixNotification.handleIncomingMessage(message.data);
+            await Clix.Notification.handleIncomingMessage(message.data);
         if (!shouldDisplay) {
           ClixLogger.debug('Message suppressed by handler');
           return;
@@ -197,7 +197,7 @@ class NotificationService {
       ClixLogger.info('App opened from notification: ${message.messageId}');
 
       // Call onNotificationOpened handler
-      ClixNotification.handleNotificationOpened(message.data);
+      Clix.Notification.handleNotificationOpened(message.data);
 
       await _handleNotificationTap(message.data);
     } catch (e) {
@@ -213,7 +213,7 @@ class NotificationService {
             'App launched from notification: ${initialMessage.messageId}');
 
         // Call onNotificationOpened handler
-        ClixNotification.handleNotificationOpened(initialMessage.data);
+        Clix.Notification.handleNotificationOpened(initialMessage.data);
 
         await _handleNotificationTap(initialMessage.data);
       }
@@ -739,7 +739,7 @@ Future<void> _firebaseMessagingBackgroundHandler(RemoteMessage message) async {
     ClixLogger.debug('Background notification: ${message.notification}');
 
     // Call onBackgroundMessage handler
-    ClixNotification.handleBackgroundMessage(message.data);
+    Clix.Notification.handleBackgroundMessage(message.data);
 
     final storageService = StorageService();
     final clixPayload = _parseClixPayloadStatic(message.data);
