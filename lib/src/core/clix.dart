@@ -59,6 +59,7 @@ class Clix {
   Future<void> _setConfig(ClixConfig config) async {
     // Initialize storage service
     _storageService = StorageService();
+    await _storageService!.initialize(config.projectId);
 
     // Store configuration
     await _storageService!.set<String>('project_id', config.projectId);
