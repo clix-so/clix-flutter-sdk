@@ -12,8 +12,12 @@ import '../utils/clix_error.dart';
 import '../utils/logging/clix_log_level.dart';
 import '../utils/logging/clix_logger.dart';
 import 'clix_config.dart';
+import 'clix_notification.dart';
 
 class Clix {
+  // ignore: non_constant_identifier_names, prefer_const_declarations
+  static final Notification = ClixNotification;
+
   static Clix? _shared;
   static bool _isInitializing = false;
   static final _initCompleter = Completer<void>();
@@ -181,12 +185,6 @@ class Clix {
     await _waitForInitialization();
     final deviceId = await _shared!._deviceService!.getCurrentDeviceId();
     return deviceId;
-  }
-
-  /// Get push token
-  static Future<String?> getPushToken() async {
-    await _waitForInitialization();
-    return _shared!._notificationService!.getCurrentToken();
   }
 
   static void setLogLevel(ClixLogLevel level) {

@@ -7,6 +7,7 @@ import 'package:url_launcher/url_launcher.dart';
 import 'package:uuid/uuid.dart';
 
 import '../core/clix_config.dart';
+import '../core/clix_notification.dart';
 import '../services/clix_api_client.dart';
 import '../services/device_api_service.dart';
 import '../services/event_api_service.dart';
@@ -171,10 +172,17 @@ class NotificationService {
       final clixPayload = parseClixPayload(message.data);
       if (clixPayload != null) {
         ClixLogger.debug('Parsed Clix payload: $clixPayload');
+
+        // Call onMessage handler and check if we should display
+        final shouldDisplay =
+            await ClixNotification.handleIncomingMessage(message.data);
+        if (!shouldDisplay) {
+          ClixLogger.debug('Message suppressed by handler');
+          return;
+        }
+
         await handlePushReceived(message.data);
-
         await _trackPushNotificationReceived(clixPayload);
-
         await _showClixNotification(message, clixPayload);
       } else {
         ClixLogger.warn('No Clix payload found in message');
@@ -187,6 +195,10 @@ class NotificationService {
   Future<void> _onMessageOpenedApp(RemoteMessage message) async {
     try {
       ClixLogger.info('App opened from notification: ${message.messageId}');
+
+      // Call onNotificationOpened handler
+      ClixNotification.handleNotificationOpened(message.data);
+
       await _handleNotificationTap(message.data);
     } catch (e) {
       ClixLogger.error('Failed to handle message opened app', e);
@@ -199,6 +211,10 @@ class NotificationService {
       if (initialMessage != null) {
         ClixLogger.info(
             'App launched from notification: ${initialMessage.messageId}');
+
+        // Call onNotificationOpened handler
+        ClixNotification.handleNotificationOpened(initialMessage.data);
+
         await _handleNotificationTap(initialMessage.data);
       }
     } catch (e) {
@@ -279,6 +295,19 @@ class NotificationService {
     } catch (e) {
       ClixLogger.error('Failed to get FCM token', e);
       return null;
+    }
+  }
+
+  Future<void> deleteToken() async {
+    try {
+      await _firebaseMessaging.deleteToken();
+      _currentToken = null;
+      await _tokenService?.clearTokens();
+      await _deviceService?.upsertToken('');
+      ClixLogger.info('FCM token deleted successfully');
+    } catch (e) {
+      ClixLogger.error('Failed to delete FCM token', e);
+      rethrow;
     }
   }
 
@@ -708,6 +737,9 @@ Future<void> _firebaseMessagingBackgroundHandler(RemoteMessage message) async {
     ClixLogger.info('Background message received: ${message.messageId}');
     ClixLogger.debug('Background message data: ${message.data}');
     ClixLogger.debug('Background notification: ${message.notification}');
+
+    // Call onBackgroundMessage handler
+    ClixNotification.handleBackgroundMessage(message.data);
 
     final storageService = StorageService();
     final clixPayload = _parseClixPayloadStatic(message.data);
