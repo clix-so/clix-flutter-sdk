@@ -1,35 +1,44 @@
 import 'dart:convert';
-import 'package:shared_preferences/shared_preferences.dart';
+import 'package:mmkv/mmkv.dart';
 import '../utils/logging/clix_logger.dart';
 
 class StorageService {
-  SharedPreferences? _prefs;
+  late final MMKV _mmkv;
+  bool _initialized = false;
 
-  Future<SharedPreferences> get _preferences async {
-    if (_prefs != null) return _prefs!;
+  Future<void> initialize(String projectId) async {
+    if (_initialized) return;
 
     try {
       ClixLogger.debug('Initializing storage service');
-      _prefs = await SharedPreferences.getInstance();
-      ClixLogger.debug('Successfully configured storage service');
-      return _prefs!;
+      final rootDir = await MMKV.initialize();
+      ClixLogger.debug('MMKV root directory: $rootDir');
+      _mmkv = MMKV('clix.$projectId');
+      _initialized = true;
+      ClixLogger.debug('Successfully configured storage service with ID: clix.$projectId');
     } catch (e) {
       ClixLogger.error('Failed to initialize storage service', e);
       rethrow;
     }
   }
 
+  void _ensureInitialized() {
+    if (!_initialized) {
+      throw StateError('StorageService must be initialized before use');
+    }
+  }
+
   Future<void> set<T>(String key, T? value) async {
     try {
-      final prefs = await _preferences;
+      _ensureInitialized();
 
       if (value == null) {
-        await prefs.remove(key);
+        _mmkv.removeValue(key);
         return;
       }
 
       final encoded = jsonEncode(value);
-      await prefs.setString(key, encoded);
+      _mmkv.encodeString(key, encoded);
     } catch (e) {
       ClixLogger.error('Failed to set value for key: $key', e);
       rethrow;
@@ -38,22 +47,12 @@ class StorageService {
 
   Future<T?> get<T>(String key) async {
     try {
-      final prefs = await _preferences;
-      final data = prefs.getString(key);
+      _ensureInitialized();
+      final data = _mmkv.decodeString(key);
       if (data == null) return null;
 
-      try {
-        final decoded = jsonDecode(data);
-        return decoded as T?;
-      } catch (jsonError) {
-        if (T == String) {
-          ClixLogger.debug(
-              'Found legacy string value for key: $key, migrating to JSON format');
-          await set<T>(key, data as T);
-          return data as T?;
-        }
-        rethrow;
-      }
+      final decoded = jsonDecode(data);
+      return decoded as T?;
     } catch (e) {
       ClixLogger.error('Failed to get value for key: $key', e);
       return null;
@@ -62,8 +61,8 @@ class StorageService {
 
   Future<void> remove(String key) async {
     try {
-      final prefs = await _preferences;
-      await prefs.remove(key);
+      _ensureInitialized();
+      _mmkv.removeValue(key);
     } catch (e) {
       ClixLogger.error('Failed to remove key: $key', e);
       rethrow;
