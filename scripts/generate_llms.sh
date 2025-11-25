@@ -487,13 +487,11 @@ if [[ -n "${BASE_REF:-}" && -n "${HEAD_REF:-}" ]]; then
     # First try the standard symmetric diff (needs a merge base).
     echo "git diff --name-only ${BASE_REF}...${HEAD_REF} (local):" >&2
     DIFF_TMP="${SECTION_TMP_DIR}/git_diff_paths.txt"
-    if git diff --name-only "${BASE_REF}...${HEAD_REF}" >"$DIFF_TMP" 2>/dev/null; then
-      :
-    else
+    git diff --name-only "${BASE_REF}...${HEAD_REF}" >"$DIFF_TMP" 2>/dev/null || {
       # If histories are unrelated (no merge base), fall back to two-dot diff.
       echo "git diff with '...' failed (likely no merge base); falling back to 'git diff ${BASE_REF} ${HEAD_REF}'" >&2
       git diff --name-only "${BASE_REF}" "${HEAD_REF}" >"$DIFF_TMP" 2>/dev/null || true
-    fi
+    }
     sed 's#^./##' "$DIFF_TMP" | sort -u >> "$CHANGED_SET"
   fi
 fi
