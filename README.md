@@ -19,7 +19,7 @@ flutter pub get
 
 ## Requirements
 
-- Flutter 3.0.0 or later
+- **Flutter 3.33.0 or later** (required for iOS debug mode on iOS 26+)
 - Dart 2.17.0 or later
 - iOS 14.0+ / Android API 23+
 - Firebase Cloud Messaging
@@ -227,6 +227,25 @@ Clix.Notification.onFcmTokenError((error) {
   // - Firebase service errors
 });
 ```
+
+### iOS Debug Mode Crash on Physical Devices
+
+If you experience crashes with the error `Unable to flip between RX and RW memory protection on pages` when running in debug mode on iOS physical devices:
+
+**Cause:** iOS 26 introduced stricter memory protection policies that affect Flutter's JIT (Just-In-Time) compilation in debug mode.
+
+**Solution:** Upgrade Flutter to version 3.33.0 or later:
+```bash
+flutter upgrade
+flutter clean
+cd ios && rm -rf Pods Podfile.lock && pod install --repo-update
+```
+
+**Workaround (if upgrade is not possible):**
+- Use Profile or Release mode for physical device testing: `flutter run --profile`
+- Use iOS Simulator for debug mode testing
+
+For more details, see [Flutter Issue #163984](https://github.com/flutter/flutter/issues/163984).
 
 ### Getting Help
 
