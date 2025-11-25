@@ -501,10 +501,10 @@ fi
 # Debug: print the raw CHANGED_SET to stderr (before any filtering) so we can
 # verify which paths will be considered for surgical updates.
 if [[ -s "$CHANGED_SET" ]]; then
-  echo "Changed paths from compare range (${BASE_REF:-?}...${HEAD_REF:-?}):" >&2
+  echo "Changed paths from compare range (${BASE_REF:-}...${HEAD_REF:-}):" >&2
   cat "$CHANGED_SET" >&2
 else
-  echo "Changed paths set is empty for compare range (${BASE_REF:-?}...${HEAD_REF:-?})" >&2
+  echo "Changed paths set is empty for compare range (${BASE_REF:-}...${HEAD_REF:-})" >&2
 fi
 
 # If we have an existing LLMS and a changed set, do TEXT-MODE update (surgical)
