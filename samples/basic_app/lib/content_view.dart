@@ -48,8 +48,8 @@ class _ContentViewState extends State<ContentView> {
     _appState.updateDeviceId(deviceId);
     _appState.updateFCMToken(fcmToken);
 
-    final storedUserId = BasicApplication.sharedPreferences.getString(
-        BasicApplication.keyUserId);
+    final storedUserId = BasicApplication.sharedPreferences
+        .getString(BasicApplication.keyUserId);
     if (storedUserId != null && storedUserId.isNotEmpty) {
       _userIdController.text = storedUserId;
     }
@@ -80,8 +80,8 @@ class _ContentViewState extends State<ContentView> {
 
     try {
       await Clix.setUserId(userId);
-      await BasicApplication.sharedPreferences.setString(
-          BasicApplication.keyUserId, userId);
+      await BasicApplication.sharedPreferences
+          .setString(BasicApplication.keyUserId, userId);
       await _showAlert('User ID set!');
     } catch (e) {
       await _showAlert('Failed to set user ID: $e');
@@ -157,7 +157,8 @@ class _ContentViewState extends State<ContentView> {
                     _buildInfoRow('Project ID', ClixConfiguration.projectId),
                     _buildInfoRow('API Key', ClixConfiguration.apiKey),
                     _buildInfoRow('Device ID', _appState.deviceId),
-                    _buildInfoRow('FCM Token', _appState.fcmToken, lastItem: true),
+                    _buildInfoRow('FCM Token', _appState.fcmToken,
+                        lastItem: true),
                     const SizedBox(height: 32),
                     _buildUserIdSection(),
                     const SizedBox(height: 32),
