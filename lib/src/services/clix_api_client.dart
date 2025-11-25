@@ -67,7 +67,8 @@ class ClixAPIClient {
     };
 
     ClixLogger.debug('API GET $path');
-    ClixLogger.debug('Making request to: $uri');
+    ClixLogger.debug('Request URI: $uri');
+    ClixLogger.debug('Request Headers: $requestHeaders');
 
     final response = await _httpClient.get(uri, headers: requestHeaders);
 
@@ -91,11 +92,10 @@ class ClixAPIClient {
     };
 
     ClixLogger.debug('API POST $path');
+    ClixLogger.debug('Request URI: $uri');
+    ClixLogger.debug('Request Headers: $requestHeaders');
     if (body != null) {
       ClixLogger.debug('Request Body: ${jsonEncode(body)}');
-    }
-    if (queryParameters?.isNotEmpty == true) {
-      ClixLogger.debug('Query Parameters: $queryParameters');
     }
 
     final encodedBody = body != null ? jsonEncode(body) : null;
@@ -126,6 +126,11 @@ class ClixAPIClient {
     };
 
     ClixLogger.debug('API PUT $path');
+    ClixLogger.debug('Request URI: $uri');
+    ClixLogger.debug('Request Headers: $requestHeaders');
+    if (body != null) {
+      ClixLogger.debug('Request Body: ${jsonEncode(body)}');
+    }
 
     final encodedBody = body != null ? jsonEncode(body) : null;
 
@@ -154,6 +159,8 @@ class ClixAPIClient {
     };
 
     ClixLogger.debug('API DELETE $path');
+    ClixLogger.debug('Request URI: $uri');
+    ClixLogger.debug('Request Headers: $requestHeaders');
 
     final response = await _httpClient.delete(uri, headers: requestHeaders);
 

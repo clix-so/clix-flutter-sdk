@@ -219,4 +219,4 @@ Before publishing to pub.dev:
 - Flutter: >=3.0.0
 - Dart: >=2.17.0 <4.0.0
 - iOS: 14.0+
-- Android: API 21+ (Android 5.0)
+- Android: API 23+ (Android 6.0)

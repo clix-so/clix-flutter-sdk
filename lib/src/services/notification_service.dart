@@ -111,6 +111,8 @@ class NotificationService {
         description: 'Notifications from Clix',
         importance: Importance.high,
         playSound: true,
+        enableVibration: true,
+        enableLights: true,
       );
 
       await _localNotifications
@@ -406,7 +408,11 @@ class NotificationService {
           ? await _downloadImage(notificationContent.imageUrl!)
           : null;
 
-      final notificationDetails = _createNotificationDetails(imagePath);
+      final notificationDetails = _createNotificationDetails(
+        imagePath,
+        notificationContent.title,
+        notificationContent.body,
+      );
 
       await _localNotifications.show(
         message.hashCode,
@@ -512,13 +518,23 @@ class NotificationService {
 
   String? get currentToken => _currentToken;
 
-  NotificationDetails _createNotificationDetails(String? imagePath) {
+  NotificationDetails _createNotificationDetails(
+      String? imagePath, String? title, String? body) {
     final androidDetails = AndroidNotificationDetails(
       'clix_channel',
       'Clix Notifications',
       channelDescription: 'Notifications from Clix',
       importance: Importance.high,
       priority: Priority.high,
+      category: AndroidNotificationCategory.message,
+      visibility: NotificationVisibility.public,
+      groupKey: 'clix_notification_group',
+      setAsGroupSummary: false,
+      groupAlertBehavior: GroupAlertBehavior.children,
+      enableVibration: true,
+      enableLights: true,
+      playSound: true,
+      ticker: body,
       icon: _defaultNotificationIcon,
       largeIcon: imagePath != null
           ? FilePathAndroidBitmap(imagePath)
@@ -528,7 +544,7 @@ class NotificationService {
               FilePathAndroidBitmap(imagePath),
               largeIcon: FilePathAndroidBitmap(imagePath),
             )
-          : null,
+          : BigTextStyleInformation(body ?? ''),
     );
 
     const iosDetails = DarwinNotificationDetails(
@@ -898,7 +914,11 @@ Future<void> _showBackgroundNotification(
       ? await NotificationService._downloadNotificationImage(content.imageUrl!)
       : null;
 
-  final notificationDetails = _createBackgroundNotificationDetails(imagePath);
+  final notificationDetails = _createBackgroundNotificationDetails(
+    imagePath,
+    content.title,
+    content.body,
+  );
 
   await flutterLocalNotificationsPlugin.show(
     message.hashCode,
@@ -924,6 +944,8 @@ Future<void> _initializeBackgroundNotifications(
     description: 'Notifications from Clix',
     importance: Importance.high,
     playSound: true,
+    enableVibration: true,
+    enableLights: true,
   );
 
   await plugin
@@ -932,13 +954,23 @@ Future<void> _initializeBackgroundNotifications(
       ?.createNotificationChannel(androidChannel);
 }
 
-NotificationDetails _createBackgroundNotificationDetails(String? imagePath) {
+NotificationDetails _createBackgroundNotificationDetails(
+    String? imagePath, String? title, String? body) {
   final androidDetails = AndroidNotificationDetails(
     'clix_channel',
     'Clix Notifications',
     channelDescription: 'Notifications from Clix',
     importance: Importance.high,
     priority: Priority.high,
+    category: AndroidNotificationCategory.message,
+    visibility: NotificationVisibility.public,
+    groupKey: 'clix_notification_group',
+    setAsGroupSummary: false,
+    groupAlertBehavior: GroupAlertBehavior.children,
+    enableVibration: true,
+    enableLights: true,
+    playSound: true,
+    ticker: body,
     icon: NotificationService._defaultNotificationIcon,
     largeIcon: imagePath != null
         ? FilePathAndroidBitmap(imagePath)
@@ -949,7 +981,7 @@ NotificationDetails _createBackgroundNotificationDetails(String? imagePath) {
             FilePathAndroidBitmap(imagePath),
             largeIcon: FilePathAndroidBitmap(imagePath),
           )
-        : null,
+        : BigTextStyleInformation(body ?? ''),
   );
 
   return NotificationDetails(android: androidDetails);

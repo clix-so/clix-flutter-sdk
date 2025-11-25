@@ -23,6 +23,7 @@ class BasicApplication {
         apiKey: ClixConfiguration.apiKey,
         endpoint: ClixConfiguration.endpoint,
         logLevel: ClixConfiguration.logLevel,
+        extraHeaders: ClixConfiguration.extraHeaders,
       ),
     );
 
