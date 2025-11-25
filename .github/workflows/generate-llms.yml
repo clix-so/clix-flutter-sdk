@@ -1,4 +1,4 @@
-name: Generate CLIX Flutter LLMS
+name: Generate llms.txt
 
 on:
   workflow_dispatch:
@@ -140,9 +140,9 @@ jobs:
           script: |
             const defaultBranch = context.payload.repository.default_branch;
             const head = process.env.BRANCH;
-            const title = 'chore: update CLIX Flutter LLMS index';
+            const title = 'chore: update llms.txt';
             const body = [
-              'This PR updates the generated CLIX Flutter SDK LLMS index.',
+              'This PR updates the generated SDK llms.txt file.',
               '',
               `- Triggered by: ${context.eventName}`,
               `- Range: ${process.env.COMPARE || '(none / full)'}`
