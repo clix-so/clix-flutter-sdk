@@ -21,7 +21,7 @@ flutter pub get
 
 - Flutter 3.0.0 or later
 - Dart 2.17.0 or later
-- iOS 14.0+ / Android API 21+
+- iOS 14.0+ / Android API 23+
 - Firebase Cloud Messaging
 
 ## Usage
