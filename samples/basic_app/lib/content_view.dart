@@ -3,7 +3,6 @@ import 'package:flutter/material.dart';
 import 'package:clix_flutter/clix_flutter.dart';
 import 'app_state.dart';
 import 'app_theme.dart';
-import 'clix_configuration.dart';
 import 'main.dart';
 
 class ContentView extends StatefulWidget {
@@ -154,8 +153,8 @@ class _ContentViewState extends State<ContentView> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    _buildInfoRow('Project ID', ClixConfiguration.projectId),
-                    _buildInfoRow('API Key', ClixConfiguration.apiKey),
+                    _buildInfoRow('Project ID', _appState.projectId),
+                    _buildInfoRow('API Key', _appState.apiKey),
                     _buildInfoRow('Device ID', _appState.deviceId),
                     _buildInfoRow('FCM Token', _appState.fcmToken,
                         lastItem: true),

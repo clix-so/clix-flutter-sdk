@@ -136,9 +136,9 @@ class NotificationService {
 
   Future<NotificationSettings> _requestPermissions() async {
     await _firebaseMessaging.setForegroundNotificationPresentationOptions(
-      alert: true,
+      alert: false,
       badge: true,
-      sound: true,
+      sound: false,
     );
 
     final settings = await _firebaseMessaging.requestPermission(
@@ -190,7 +190,8 @@ class NotificationService {
         await _trackPushNotificationReceived(clixPayload);
         await _showClixNotification(message, clixPayload);
       } else {
-        ClixLogger.warn('No Clix payload found in message');
+        ClixLogger.debug('Non-Clix message, showing FCM notification');
+        await _showNonClixNotification(message);
       }
     } catch (e) {
       ClixLogger.error('Failed to handle foreground message', e);
@@ -395,11 +396,6 @@ class NotificationService {
   Future<void> _showClixNotification(
       RemoteMessage message, Map<String, dynamic> clixPayload) async {
     try {
-      if (message.notification != null) {
-        ClixLogger.debug('FCM notification exists, letting system handle it');
-        return;
-      }
-
       final notificationContent = _extractNotificationContent(clixPayload);
       ClixLogger.debug(
           'Showing Clix notification: ${notificationContent.title} - ${notificationContent.body}');
@@ -425,6 +421,46 @@ class NotificationService {
       ClixLogger.info('Clix notification displayed successfully');
     } catch (e) {
       ClixLogger.error('Failed to show Clix notification', e);
+    }
+  }
+
+  Future<void> _showNonClixNotification(RemoteMessage message) async {
+    try {
+      final notification = message.notification;
+      if (notification == null) {
+        ClixLogger.debug('No notification payload in non-Clix message, skipping');
+        return;
+      }
+
+      final title = notification.title ?? '';
+      final body = notification.body ?? '';
+      final imageUrl = notification.android?.imageUrl ??
+          notification.apple?.imageUrl ??
+          message.data['image'] as String? ??
+          message.data['image_url'] as String?;
+
+      ClixLogger.debug('Showing non-Clix notification: $title - $body');
+
+      final imagePath =
+          imageUrl != null ? await _downloadImage(imageUrl) : null;
+
+      final notificationDetails = _createNotificationDetails(
+        imagePath,
+        title,
+        body,
+      );
+
+      await _localNotifications.show(
+        message.hashCode,
+        title,
+        body,
+        notificationDetails,
+        payload: jsonEncode(message.data),
+      );
+
+      ClixLogger.info('Non-Clix notification displayed successfully');
+    } catch (e) {
+      ClixLogger.error('Failed to show non-Clix notification', e);
     }
   }
 
@@ -547,10 +583,13 @@ class NotificationService {
           : BigTextStyleInformation(body ?? ''),
     );
 
-    const iosDetails = DarwinNotificationDetails(
+    final iosDetails = DarwinNotificationDetails(
       presentAlert: true,
       presentBadge: true,
       presentSound: true,
+      attachments: imagePath != null
+          ? [DarwinNotificationAttachment(imagePath)]
+          : null,
     );
 
     return NotificationDetails(
