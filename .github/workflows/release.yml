@@ -72,3 +72,10 @@ jobs:
 
       - name: Release to pub.dev
         run: dart pub publish --force
+
+  generate-llms:
+    needs: release
+    uses: ./.github/workflows/generate-llms.yml
+    with:
+      llm_mode: changed
+    secrets: inherit
