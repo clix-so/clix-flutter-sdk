@@ -92,6 +92,9 @@ class NotificationService {
       requestAlertPermission: false,
       requestBadgePermission: false,
       requestSoundPermission: false,
+      defaultPresentAlert: true,
+      defaultPresentBadge: true,
+      defaultPresentSound: true,
     );
 
     const initSettings = InitializationSettings(
@@ -120,6 +123,13 @@ class NotificationService {
               AndroidFlutterLocalNotificationsPlugin>()
           ?.createNotificationChannel(androidChannel);
     }
+
+    if (Platform.isIOS) {
+      await _localNotifications
+          .resolvePlatformSpecificImplementation<
+              IOSFlutterLocalNotificationsPlugin>()
+          ?.requestPermissions(alert: true, badge: true, sound: true);
+    }
   }
 
   void _onLocalNotificationTapped(NotificationResponse response) {
@@ -135,12 +145,6 @@ class NotificationService {
   }
 
   Future<NotificationSettings> _requestPermissions() async {
-    await _firebaseMessaging.setForegroundNotificationPresentationOptions(
-      alert: false,
-      badge: true,
-      sound: false,
-    );
-
     final settings = await _firebaseMessaging.requestPermission(
       alert: true,
       badge: true,
@@ -189,9 +193,6 @@ class NotificationService {
         await handlePushReceived(message.data);
         await _trackPushNotificationReceived(clixPayload);
         await _showClixNotification(message, clixPayload);
-      } else {
-        ClixLogger.debug('Non-Clix message, showing FCM notification');
-        await _showNonClixNotification(message);
       }
     } catch (e) {
       ClixLogger.error('Failed to handle foreground message', e);
@@ -396,71 +397,28 @@ class NotificationService {
   Future<void> _showClixNotification(
       RemoteMessage message, Map<String, dynamic> clixPayload) async {
     try {
-      final notificationContent = _extractNotificationContent(clixPayload);
-      ClixLogger.debug(
-          'Showing Clix notification: ${notificationContent.title} - ${notificationContent.body}');
-
-      final imagePath = notificationContent.imageUrl != null
-          ? await _downloadImage(notificationContent.imageUrl!)
+      final content = _extractNotificationContent(clixPayload);
+      final imagePath = content.imageUrl != null
+          ? await _downloadImage(content.imageUrl!)
           : null;
 
       final notificationDetails = _createNotificationDetails(
         imagePath,
-        notificationContent.title,
-        notificationContent.body,
+        content.title,
+        content.body,
       );
 
       await _localNotifications.show(
         message.hashCode,
-        notificationContent.title,
-        notificationContent.body,
+        content.title,
+        content.body,
         notificationDetails,
         payload: jsonEncode(message.data),
       );
 
-      ClixLogger.info('Clix notification displayed successfully');
+      ClixLogger.info('Clix notification displayed: ${content.title}');
     } catch (e) {
       ClixLogger.error('Failed to show Clix notification', e);
-    }
-  }
-
-  Future<void> _showNonClixNotification(RemoteMessage message) async {
-    try {
-      final notification = message.notification;
-      if (notification == null) {
-        ClixLogger.debug('No notification payload in non-Clix message, skipping');
-        return;
-      }
-
-      final title = notification.title ?? '';
-      final body = notification.body ?? '';
-      final imageUrl = notification.android?.imageUrl ??
-          notification.apple?.imageUrl ??
-          message.data['image'] as String? ??
-          message.data['image_url'] as String?;
-
-      ClixLogger.debug('Showing non-Clix notification: $title - $body');
-
-      final imagePath =
-          imageUrl != null ? await _downloadImage(imageUrl) : null;
-
-      final notificationDetails = _createNotificationDetails(
-        imagePath,
-        title,
-        body,
-      );
-
-      await _localNotifications.show(
-        message.hashCode,
-        title,
-        body,
-        notificationDetails,
-        payload: jsonEncode(message.data),
-      );
-
-      ClixLogger.info('Non-Clix notification displayed successfully');
-    } catch (e) {
-      ClixLogger.error('Failed to show non-Clix notification', e);
     }
   }
 
