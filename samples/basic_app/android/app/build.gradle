@@ -49,7 +49,7 @@ android {
 
     defaultConfig {
         applicationId "so.clix.samples.basic"
-        minSdkVersion 23
+        minSdkVersion flutter.minSdkVersion
         targetSdkVersion 34
         versionCode flutterVersionCode.toInteger()
         versionName flutterVersionName

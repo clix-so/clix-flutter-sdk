@@ -52,3 +52,6 @@ app.*.map.json
 *.class
 *.log
 *.pyc
+
+# Clix Configuration
+assets/clix_config.json

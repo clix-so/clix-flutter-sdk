@@ -17,15 +17,17 @@ class BasicApplication {
   static Future<void> initialize() async {
     sharedPreferences = await SharedPreferences.getInstance();
 
-    await Clix.initialize(
-      const ClixConfig(
-        projectId: ClixConfiguration.projectId,
-        apiKey: ClixConfiguration.apiKey,
-        endpoint: ClixConfiguration.endpoint,
-        logLevel: ClixConfiguration.logLevel,
-        extraHeaders: ClixConfiguration.extraHeaders,
-      ),
-    );
+    // Initialize configuration (loads once and caches)
+    await ClixConfiguration.initialize();
+
+    // Get cached configuration
+    final config = ClixConfiguration.config;
+
+    // Update app state with configuration for UI display
+    AppState().updateConfiguration(config.projectId, config.apiKey);
+
+    // Initialize Clix SDK with the loaded configuration
+    await Clix.initialize(config);
 
     await _updateClixValues();
 
