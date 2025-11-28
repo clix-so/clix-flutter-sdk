@@ -9,6 +9,8 @@ import 'package:uuid/uuid.dart';
 
 import '../core/clix.dart';
 import '../core/clix_config.dart';
+import '../platform/clix_native_bridge.dart';
+import '../platform/messages.g.dart';
 import '../services/clix_api_client.dart';
 import '../services/device_api_service.dart';
 import '../services/event_api_service.dart';
@@ -25,7 +27,11 @@ class NotificationService {
 
   factory NotificationService() => _instance;
 
-  NotificationService._internal();
+  NotificationService._internal() {
+    if (Platform.isIOS) {
+      ClixFlutterApi.setUp(ClixNativeBridge(this));
+    }
+  }
 
   final FirebaseMessaging _firebaseMessaging = FirebaseMessaging.instance;
   final FlutterLocalNotificationsPlugin _localNotifications =
@@ -134,10 +140,11 @@ class NotificationService {
 
   void _onLocalNotificationTapped(NotificationResponse response) {
     try {
+      ClixLogger.info('Local notification tapped: ${response.notificationResponseType}');
       final payload = response.payload;
       if (payload != null) {
         final Map<String, dynamic> data = jsonDecode(payload);
-        _handleNotificationTap(data);
+        handleNotificationTap(data);
       }
     } catch (e) {
       ClixLogger.error('Failed to handle local notification tap', e);
@@ -206,7 +213,7 @@ class NotificationService {
       // Call onNotificationOpened handler
       Clix.Notification.handleNotificationOpened(message.data);
 
-      await _handleNotificationTap(message.data);
+      await handleNotificationTap(message.data);
     } catch (e) {
       ClixLogger.error('Failed to handle message opened app', e);
     }
@@ -222,14 +229,14 @@ class NotificationService {
         // Call onNotificationOpened handler
         Clix.Notification.handleNotificationOpened(initialMessage.data);
 
-        await _handleNotificationTap(initialMessage.data);
+        await handleNotificationTap(initialMessage.data);
       }
     } catch (e) {
       ClixLogger.error('Failed to handle initial message', e);
     }
   }
 
-  Future<void> _handleNotificationTap(Map<String, dynamic> data) async {
+  Future<void> handleNotificationTap(Map<String, dynamic> data) async {
     try {
       final clixPayload = parseClixPayload(data);
       if (clixPayload != null) {

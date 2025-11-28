@@ -15,5 +15,9 @@ import 'package:pigeon/pigeon.dart';
   ),
 )
 @HostApi()
-abstract class ClixHostApi {
+abstract class ClixHostApi {}
+
+@FlutterApi()
+abstract class ClixFlutterApi {
+  void onNotificationTapped(Map<String?, Object?> userInfo);
 }
