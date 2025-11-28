@@ -44,9 +44,15 @@ void main() async {
   await Clix.initialize(const ClixConfig(
     projectId: 'YOUR_PROJECT_ID',
     apiKey: 'YOUR_API_KEY',
-    endpoint: 'https://api.clix.so', // Optional: default is https://api.clix.so
-    logLevel: ClixLogLevel.debug,     // Optional: set log level
+    endpoint: 'https://api.clix.so',      // Optional: default is https://api.clix.so
+    logLevel: ClixLogLevel.debug,          // Optional: set log level
   ));
+
+  // Configure notifications (optional)
+  await Clix.Notification.configure(
+    autoRequestPermission: true,           // Request permission immediately
+    autoHandleLandingURL: true,            // Auto-open landing URLs on tap
+  );
 
   runApp(MyApp());
 }
@@ -140,24 +146,23 @@ void main() async {
     apiKey: 'YOUR_API_KEY',
   ));
 
-  // Register notification handlers
-  Clix.Notification.onMessage((notificationData) async {
-    // Return true to display the notification, false to suppress it
-    return true;
+  // Register notification handlers (all receive full RemoteMessage)
+  Clix.Notification.onMessage((message) async {
+    // Called when message received in foreground
+    print('Foreground message: ${message.messageId}');
+    return true; // Return true to display, false to suppress
   });
 
-  Clix.Notification.onBackgroundMessage((notificationData) {
-    // Handle background notification
-    print('Background notification received: $notificationData');
+  Clix.Notification.onBackgroundMessage((message) async {
+    // Called when message received in background
+    print('Background message: ${message.messageId}');
   });
 
-  Clix.Notification.onNotificationOpened((notificationData) {
-    // Custom routing (called when user taps notification)
-    final clixData = notificationData['clix'] as Map<String, dynamic>?;
-    final landingURL = clixData?['landing_url'] as String?;
-    if (landingURL != null) {
-      // Handle custom routing
-    }
+  Clix.Notification.onNotificationOpened((message) {
+    // Called when user taps notification (app was in background)
+    print('Notification tapped: ${message.messageId}');
+    final clixData = message.data['clix'];
+    // Handle custom routing based on notification data
   });
 
   Clix.Notification.onFcmTokenError((error) {
@@ -170,13 +175,126 @@ void main() async {
 
 **Important:** All `Clix.Notification` methods must be called **after** `Clix.initialize()`.
 
-##### About `notificationData`
+##### About Handler Parameters
 
-- The `notificationData` map is the full FCM payload as delivered to the device
-- Every Clix notification callback (`onMessage`, `onBackgroundMessage`, `onNotificationOpened`) passes this map through untouched
-- `notificationData['clix']` holds the Clix metadata JSON, while all other keys represent app-specific data
+All handlers receive the full `RemoteMessage` object for Firebase compatibility:
 
-#### 3. Token Management
+| Handler | Signature | Description |
+|---------|-----------|-------------|
+| `onMessage` | `Future<bool> Function(RemoteMessage)` | Foreground messages. Return `true` to display, `false` to suppress |
+| `onBackgroundMessage` | `Future<void> Function(RemoteMessage)` | Background messages. Matches Firebase's `BackgroundMessageHandler` |
+| `onNotificationOpened` | `void Function(RemoteMessage)` | **All notification taps** (FCM + local). Matches Firebase's `onNotificationOpened` |
+
+Access Clix metadata via `message.data['clix']`.
+
+#### 3. Migration from Existing Firebase Messaging Setup
+
+If your app already uses `firebase_messaging` with custom handlers, you can migrate to Clix SDK while preserving your existing logic.
+
+**Why migrate?** The Clix SDK internally registers Firebase Messaging handlers. If you register your own handlers separately, they may conflict or be overwritten. By passing your handlers to Clix, both SDK tracking and your custom logic work together.
+
+##### Background Message Handler Migration
+
+The `onBackgroundMessage` handler signature matches Firebase's `BackgroundMessageHandler` exactly, making migration straightforward:
+
+**Before (Firebase direct):**
+```dart
+@pragma('vm:entry-point')
+Future<void> myBackgroundHandler(RemoteMessage message) async {
+  print('Background message: ${message.messageId}');
+  await saveToLocalDB(message.data);
+}
+
+void main() async {
+  WidgetsFlutterBinding.ensureInitialized();
+  await Firebase.initializeApp();
+
+  // Direct Firebase registration
+  FirebaseMessaging.onBackgroundMessage(myBackgroundHandler);
+
+  runApp(MyApp());
+}
+```
+
+**After (via Clix SDK):**
+```dart
+@pragma('vm:entry-point')
+Future<void> myBackgroundHandler(RemoteMessage message) async {
+  // Same handler code - no changes needed
+  print('Background message: ${message.messageId}');
+  await saveToLocalDB(message.data);
+}
+
+void main() async {
+  WidgetsFlutterBinding.ensureInitialized();
+  await Firebase.initializeApp();
+
+  // Pass handler to Clix instead of Firebase directly
+  Clix.Notification.onBackgroundMessage(myBackgroundHandler);
+
+  await Clix.initialize(const ClixConfig(
+    projectId: 'YOUR_PROJECT_ID',
+    apiKey: 'YOUR_API_KEY',
+  ));
+
+  runApp(MyApp());
+}
+```
+
+##### Execution Order
+
+When a background message arrives, the execution order is:
+
+```
+1. Firebase receives RemoteMessage
+       ↓
+2. Clix SDK internal handler runs (logging, setup)
+       ↓
+3. Your handler executes (await myBackgroundHandler(message))
+       ↓
+4. Clix SDK completes processing (event tracking, notification display)
+```
+
+This ensures your custom logic runs with full `RemoteMessage` access while Clix handles analytics and notification display automatically.
+
+##### Foreground Message Handler Migration
+
+The `onMessage` handler also receives full `RemoteMessage`:
+
+**Before (Firebase direct):**
+```dart
+FirebaseMessaging.onMessage.listen((message) {
+  print('Foreground message: ${message.messageId}');
+  showLocalNotification(message);
+});
+```
+
+**After (via Clix SDK):**
+```dart
+Clix.Notification.onMessage((message) async {
+  print('Foreground message: ${message.messageId}');
+  // Return true to let Clix display notification, false to suppress
+  return true;
+});
+```
+
+##### Message Opened Handler Migration
+
+**Before (Firebase direct):**
+```dart
+FirebaseMessaging.onNotificationOpened.listen((message) {
+  handleNotificationTap(message);
+});
+```
+
+**After (via Clix SDK):**
+```dart
+Clix.Notification.onNotificationOpened((message) {
+  handleNotificationTap(message);
+});
+```
+
+#### 4. Token Management
 
 ```dart
 // Get current FCM token
@@ -185,6 +303,62 @@ final token = await Clix.Notification.getToken();
 // Delete FCM token
 await Clix.Notification.deleteToken();
 ```
+
+#### 5. Advanced Configuration
+
+##### Permission Request Control
+
+By default, the SDK does not automatically request notification permissions.
+You can request permission at the right moment in your app's UX:
+
+```dart
+await Clix.initialize(const ClixConfig(
+  projectId: 'YOUR_PROJECT_ID',
+  apiKey: 'YOUR_API_KEY',
+));
+
+// Option 1: Request immediately via configure()
+await Clix.Notification.configure(autoRequestPermission: true);
+
+// Option 2: Request at a specific point (e.g., after onboarding)
+final status = await Clix.Notification.requestPermission();
+if (status == AuthorizationStatus.authorized) {
+  print('Notifications enabled!');
+}
+
+// Check current permission status
+final currentStatus = await Clix.Notification.getPermissionStatus();
+```
+
+##### Migrating from Existing flutter_local_notifications Setup
+
+If your app already uses `flutter_local_notifications` with a custom callback, migrate to `onNotificationOpened`:
+
+**Before (flutter_local_notifications direct):**
+```dart
+await flutterLocalNotificationsPlugin.initialize(
+  initSettings,
+  onDidReceiveNotificationResponse: (response) {
+    if (response.payload != null) {
+      final data = jsonDecode(response.payload!);
+      handleMyNotificationTap(data);
+    }
+  },
+);
+```
+
+**After (via Clix SDK):**
+```dart
+// Remove your flutter_local_notifications initialization code
+// The SDK handles it internally
+
+// Use onNotificationOpened for ALL notification taps (FCM + local)
+Clix.Notification.onNotificationOpened((message) {
+  handleMyNotificationTap(message.data);  // Your existing logic
+});
+```
+
+**Why migrate?** The `flutter_local_notifications` plugin can only have one `onDidReceiveNotificationResponse` callback. The SDK handles initialization internally and calls your `onNotificationOpened` handler for all notification taps (both FCM and local notifications).
 
 ## Error Handling
 

@@ -1,3 +1,5 @@
+import 'package:firebase_messaging/firebase_messaging.dart';
+
 import '../utils/logging/clix_logger.dart';
 import 'clix.dart';
 
@@ -9,38 +11,71 @@ import 'clix.dart';
 /// Access this class through [Clix.Notification] only.
 class ClixNotification {
   // Callback handlers
-  Future<bool> Function(Map<String, dynamic>)? _onMessage;
-  void Function(Map<String, dynamic>)? _onBackgroundMessage;
-  void Function(Map<String, dynamic>)? _onNotificationOpened;
+  Future<bool> Function(RemoteMessage)? _onMessage;
+  Future<void> Function(RemoteMessage)? _onBackgroundMessage;
+  void Function(RemoteMessage)? _onNotificationOpened;
   void Function(Exception)? _onFcmTokenError;
 
+  // Configuration
+  bool _autoHandleLandingURL = true;
+
+  /// Configure notification behavior.
+  Future<void> configure({
+    bool autoRequestPermission = false,
+    bool autoHandleLandingURL = true,
+  }) async {
+    _autoHandleLandingURL = autoHandleLandingURL;
+
+    if (autoRequestPermission) {
+      await requestPermission();
+    }
+  }
+
+  /// Requests notification permission from the user.
+  Future<AuthorizationStatus> requestPermission() async {
+    try {
+      await Clix.waitForInitialization();
+      final status =
+          await Clix.notificationServiceInstance?.requestNotificationPermission();
+      return status ?? AuthorizationStatus.denied;
+    } catch (e) {
+      ClixLogger.error('Failed to request permission', e);
+      return AuthorizationStatus.denied;
+    }
+  }
+
+  /// Returns the current notification permission status.
+  Future<AuthorizationStatus> getPermissionStatus() async {
+    try {
+      final settings =
+          await FirebaseMessaging.instance.getNotificationSettings();
+      return settings.authorizationStatus;
+    } catch (e) {
+      ClixLogger.error('Failed to get permission status', e);
+      return AuthorizationStatus.denied;
+    }
+  }
+
+  /// Whether landing URLs should be automatically opened on notification tap.
+  bool get autoHandleLandingURL => _autoHandleLandingURL;
+
   /// Register a handler for foreground messages.
-  ///
-  /// The handler receives notification data and should return true to display
-  /// the notification or false to suppress it.
-  void onMessage(Future<bool> Function(Map<String, dynamic>) handler) {
+  /// Return true to display the notification or false to suppress it.
+  void onMessage(Future<bool> Function(RemoteMessage) handler) {
     _onMessage = handler;
   }
 
   /// Register a handler for background messages.
-  ///
-  /// This handler is invoked when a notification is received while the app
-  /// is in the background.
-  void onBackgroundMessage(void Function(Map<String, dynamic>) handler) {
+  void onBackgroundMessage(Future<void> Function(RemoteMessage) handler) {
     _onBackgroundMessage = handler;
   }
 
   /// Register a handler for when a notification is opened/tapped.
-  ///
-  /// This handler is called when the user taps on a notification.
-  void onNotificationOpened(void Function(Map<String, dynamic>) handler) {
+  void onNotificationOpened(void Function(RemoteMessage) handler) {
     _onNotificationOpened = handler;
   }
 
   /// Register a handler for FCM token errors.
-  ///
-  /// This handler is invoked when there is an error fetching or refreshing
-  /// the FCM token.
   void onFcmTokenError(void Function(Exception) handler) {
     _onFcmTokenError = handler;
   }
@@ -56,12 +91,11 @@ class ClixNotification {
     }
   }
 
-  /// Deletes the current FCM token and notifies the server.
+  /// Deletes the current FCM token.
   Future<void> deleteToken() async {
     try {
       await Clix.waitForInitialization();
       await Clix.notificationServiceInstance?.deleteToken();
-      ClixLogger.debug('FCM token deleted successfully');
     } catch (e) {
       ClixLogger.error('Failed to delete token', e);
       rethrow;
@@ -69,11 +103,10 @@ class ClixNotification {
   }
 
   // Internal handlers for SDK use
-  Future<bool> handleIncomingMessage(
-      Map<String, dynamic> notificationData) async {
+  Future<bool> handleIncomingMessage(RemoteMessage message) async {
     try {
       if (_onMessage != null) {
-        return await _onMessage!(notificationData);
+        return await _onMessage!(message);
       }
       return true; // Default: display notification
     } catch (e) {
@@ -82,17 +115,17 @@ class ClixNotification {
     }
   }
 
-  void handleBackgroundMessage(Map<String, dynamic> notificationData) {
+  Future<void> handleBackgroundMessage(RemoteMessage message) async {
     try {
-      _onBackgroundMessage?.call(notificationData);
+      await _onBackgroundMessage?.call(message);
     } catch (e) {
       ClixLogger.error('Background message handler failed', e);
     }
   }
 
-  void handleNotificationOpened(Map<String, dynamic> notificationData) {
+  void handleNotificationOpened(RemoteMessage message) {
     try {
-      _onNotificationOpened?.call(notificationData);
+      _onNotificationOpened?.call(message);
     } catch (e) {
       ClixLogger.error('Notification opened handler failed', e);
     }

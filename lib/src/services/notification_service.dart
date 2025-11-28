@@ -69,25 +69,27 @@ class NotificationService {
       ClixLogger.info('Initializing notification service');
 
       await _initializeLocalNotifications();
-      final settings = await _requestPermissions();
-      if (settings.authorizationStatus == AuthorizationStatus.denied) {
-        ClixLogger.warn(
-            'Push notification permission denied. User needs to enable it manually in Settings.');
-      }
       _setupMessageHandlers();
-
-      if (settings.authorizationStatus != AuthorizationStatus.denied) {
-        await _getAndUpdateToken();
-        _firebaseMessaging.onTokenRefresh.listen(_onTokenRefresh);
-      } else {
-        ClixLogger.info('Skipping token setup due to denied permissions');
-      }
+      await _getAndUpdateTokenIfPermitted();
+      _firebaseMessaging.onTokenRefresh.listen(_onTokenRefresh);
 
       _isInitialized = true;
       ClixLogger.info('Notification service initialized successfully');
     } catch (e) {
       ClixLogger.error('Failed to initialize notification service', e);
       rethrow;
+    }
+  }
+
+  Future<void> _getAndUpdateTokenIfPermitted() async {
+    try {
+      final settings = await _firebaseMessaging.getNotificationSettings();
+      if (settings.authorizationStatus == AuthorizationStatus.authorized ||
+          settings.authorizationStatus == AuthorizationStatus.provisional) {
+        await _getAndUpdateToken();
+      }
+    } catch (e) {
+      ClixLogger.error('Failed to check permission status', e);
     }
   }
 
@@ -140,10 +142,13 @@ class NotificationService {
 
   void _onLocalNotificationTapped(NotificationResponse response) {
     try {
-      ClixLogger.info('Local notification tapped: ${response.notificationResponseType}');
       final payload = response.payload;
       if (payload != null) {
         final Map<String, dynamic> data = jsonDecode(payload);
+        final remoteMessage = RemoteMessage(
+          data: data.map((key, value) => MapEntry(key, value.toString())),
+        );
+        Clix.Notification.handleNotificationOpened(remoteMessage);
         handleNotificationTap(data);
       }
     } catch (e) {
@@ -187,13 +192,9 @@ class NotificationService {
 
       final clixPayload = parseClixPayload(message.data);
       if (clixPayload != null) {
-        ClixLogger.debug('Parsed Clix payload: $clixPayload');
-
-        // Call onMessage handler and check if we should display
         final shouldDisplay =
-            await Clix.Notification.handleIncomingMessage(message.data);
+            await Clix.Notification.handleIncomingMessage(message);
         if (!shouldDisplay) {
-          ClixLogger.debug('Message suppressed by handler');
           return;
         }
 
@@ -208,11 +209,7 @@ class NotificationService {
 
   Future<void> _onMessageOpenedApp(RemoteMessage message) async {
     try {
-      ClixLogger.info('App opened from notification: ${message.messageId}');
-
-      // Call onNotificationOpened handler
-      Clix.Notification.handleNotificationOpened(message.data);
-
+      Clix.Notification.handleNotificationOpened(message);
       await handleNotificationTap(message.data);
     } catch (e) {
       ClixLogger.error('Failed to handle message opened app', e);
@@ -223,12 +220,7 @@ class NotificationService {
     try {
       final initialMessage = await _firebaseMessaging.getInitialMessage();
       if (initialMessage != null) {
-        ClixLogger.info(
-            'App launched from notification: ${initialMessage.messageId}');
-
-        // Call onNotificationOpened handler
-        Clix.Notification.handleNotificationOpened(initialMessage.data);
-
+        Clix.Notification.handleNotificationOpened(initialMessage);
         await handleNotificationTap(initialMessage.data);
       }
     } catch (e) {
@@ -429,19 +421,25 @@ class NotificationService {
     }
   }
 
-  Future<bool> requestNotificationPermission() async {
+  Future<AuthorizationStatus> requestNotificationPermission() async {
     try {
       ClixLogger.info('Requesting notification permission');
 
       final settings = await _requestPermissions();
-      final granted =
-          settings.authorizationStatus == AuthorizationStatus.authorized;
+      final status = settings.authorizationStatus;
 
-      ClixLogger.info('Notification permission granted: $granted');
-      return granted;
+      ClixLogger.info('Notification permission status: $status');
+
+      // If permission granted, ensure token is registered
+      if (status == AuthorizationStatus.authorized ||
+          status == AuthorizationStatus.provisional) {
+        await _getAndUpdateToken();
+      }
+
+      return status;
     } catch (e) {
       ClixLogger.error('Failed to request notification permission', e);
-      return false;
+      return AuthorizationStatus.denied;
     }
   }
 
@@ -758,9 +756,7 @@ class _NotificationContent {
 @pragma('vm:entry-point')
 Future<void> _firebaseMessagingBackgroundHandler(RemoteMessage message) async {
   try {
-    ClixLogger.info('Background message received: ${message.messageId}');
-
-    Clix.Notification.handleBackgroundMessage(message.data);
+    await Clix.Notification.handleBackgroundMessage(message);
 
     final clixPayload = _parseClixPayloadStatic(message.data);
     if (clixPayload == null) {
