@@ -1,4 +1,4 @@
-#!/bin/sh
+#!/bin/bash
 
 # Script that updates the Clix Flutter SDK version in pubspec.yaml and README.md.
 #
