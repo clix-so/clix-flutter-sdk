@@ -45,7 +45,8 @@ extension ClixPlugin: UNUserNotificationCenterDelegate {
             return
         }
 
-        if let prev = previousDelegate {
+        if let prev = previousDelegate,
+           prev.responds(to: #selector(UNUserNotificationCenterDelegate.userNotificationCenter(_:willPresent:withCompletionHandler:))) {
             prev.userNotificationCenter?(center, willPresent: notification) { options in
                 completionHandler(isClix ? [] : options)
             }
@@ -63,7 +64,8 @@ extension ClixPlugin: UNUserNotificationCenterDelegate {
         let dict = userInfo.reduce(into: [String?: Any?]()) { $0[$1.key as? String] = $1.value }
         flutterApi?.onNotificationTapped(userInfo: dict) { _ in }
 
-        if let prev = previousDelegate {
+        if let prev = previousDelegate,
+           prev.responds(to: #selector(UNUserNotificationCenterDelegate.userNotificationCenter(_:didReceive:withCompletionHandler:))) {
             prev.userNotificationCenter?(center, didReceive: response, withCompletionHandler: completionHandler)
         } else {
             completionHandler()

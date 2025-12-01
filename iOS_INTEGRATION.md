@@ -64,7 +64,7 @@ void main() async {
   });
 
   // Background message handler
-  Clix.Notification.onBackgroundMessage((notificationData) {
+  Clix.Notification.onBackgroundMessage((notificationData) async {
     print('Background notification: $notificationData');
   });
 

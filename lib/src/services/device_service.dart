@@ -208,6 +208,9 @@ class DeviceService {
       ClixLogger.error('Failed to get push permission status', e);
     }
 
+    // Treat empty string as null for token
+    final effectiveToken = (token != null && token.isNotEmpty) ? token : null;
+
     return ClixDevice(
       id: deviceId,
       platform: platform,
@@ -224,8 +227,8 @@ class DeviceService {
       sdkVersion: await ClixVersion.version,
       adId: null,
       isPushPermissionGranted: isPushPermissionGranted,
-      pushToken: token,
-      pushTokenType: token != null ? 'FCM' : null,
+      pushToken: effectiveToken,
+      pushTokenType: effectiveToken != null ? 'FCM' : null,
     );
   }
 }

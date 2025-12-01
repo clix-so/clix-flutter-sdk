@@ -132,12 +132,6 @@ class NotificationService {
           ?.createNotificationChannel(androidChannel);
     }
 
-    if (Platform.isIOS) {
-      await _localNotifications
-          .resolvePlatformSpecificImplementation<
-              IOSFlutterLocalNotificationsPlugin>()
-          ?.requestPermissions(alert: true, badge: true, sound: true);
-    }
   }
 
   void _onLocalNotificationTapped(NotificationResponse response) {
