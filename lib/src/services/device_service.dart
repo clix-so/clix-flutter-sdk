@@ -104,6 +104,44 @@ class DeviceService {
     }
   }
 
+  Future<void> upsertIsPushPermissionGranted(bool isGranted) async {
+    try {
+      ClixLogger.debug('upsertIsPushPermissionGranted: $isGranted');
+
+      final deviceId = await getCurrentDeviceId();
+      final token = await _tokenService.getCurrentToken();
+      final device = await createDevice(deviceId: deviceId, token: token);
+
+      // Create updated device with the new permission status
+      final updatedDevice = ClixDevice(
+        id: device.id,
+        platform: device.platform,
+        model: device.model,
+        manufacturer: device.manufacturer,
+        osName: device.osName,
+        osVersion: device.osVersion,
+        localeRegion: device.localeRegion,
+        localeLanguage: device.localeLanguage,
+        timezone: device.timezone,
+        appName: device.appName,
+        appVersion: device.appVersion,
+        sdkType: device.sdkType,
+        sdkVersion: device.sdkVersion,
+        adId: device.adId,
+        isPushPermissionGranted: isGranted,
+        pushToken: device.pushToken,
+        pushTokenType: device.pushTokenType,
+      );
+
+      await _deviceAPIService.registerDevice(device: updatedDevice);
+      ClixLogger.info('Push permission status updated: $isGranted');
+    } catch (e) {
+      ClixLogger.error('Failed to update push permission status', e);
+      throw ClixError.unknownErrorWithReason(
+          'Failed to update push permission status: $e');
+    }
+  }
+
   Future<void> upsertToken(String token, {String tokenType = 'FCM'}) async {
     try {
       await _tokenService.saveToken(token);
@@ -170,6 +208,9 @@ class DeviceService {
       ClixLogger.error('Failed to get push permission status', e);
     }
 
+    // Treat empty string as null for token
+    final effectiveToken = (token != null && token.isNotEmpty) ? token : null;
+
     return ClixDevice(
       id: deviceId,
       platform: platform,
@@ -186,8 +227,8 @@ class DeviceService {
       sdkVersion: await ClixVersion.version,
       adId: null,
       isPushPermissionGranted: isPushPermissionGranted,
-      pushToken: token,
-      pushTokenType: token != null ? 'FCM' : null,
+      pushToken: effectiveToken,
+      pushTokenType: effectiveToken != null ? 'FCM' : null,
     );
   }
 }

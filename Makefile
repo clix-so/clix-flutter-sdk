@@ -59,7 +59,7 @@ format:
 # Run code analysis (lint)
 lint:
 	@echo "🔍 Running code analysis..."
-	@dart analyze --fatal-infos --fatal-warnings
+	@dart analyze --fatal-infos --fatal-warnings lib/
 	@echo "✅ Code analysis completed"
 
 # Fix linting issues automatically

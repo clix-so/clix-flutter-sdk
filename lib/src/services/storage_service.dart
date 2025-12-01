@@ -1,18 +1,33 @@
 import 'dart:convert';
-import 'package:shared_preferences/shared_preferences.dart';
+import 'dart:io';
+import 'package:mmkv/mmkv.dart';
+import 'package:package_info_plus/package_info_plus.dart';
 import '../utils/logging/clix_logger.dart';
 
 class StorageService {
-  SharedPreferences? _prefs;
+  static const String _projectIdKey = 'clix_project_id';
 
-  Future<SharedPreferences> get _preferences async {
-    if (_prefs != null) return _prefs!;
+  static MMKV get _defaultMMKV => MMKV.defaultMMKV();
+
+  late final MMKV _mmkv;
+  bool _initialized = false;
+
+  Future<void> initialize(String projectId) async {
+    if (_initialized) return;
 
     try {
-      ClixLogger.debug('Initializing storage service');
-      _prefs = await SharedPreferences.getInstance();
-      ClixLogger.debug('Successfully configured storage service');
-      return _prefs!;
+      String? groupDir;
+      if (Platform.isIOS) {
+        final packageInfo = await PackageInfo.fromPlatform();
+        groupDir = 'group.clix.${packageInfo.packageName}';
+      }
+
+      await MMKV.initialize(groupDir: groupDir, logLevel: MMKVLogLevel.Info);
+
+      _defaultMMKV.encodeString(_projectIdKey, projectId);
+
+      _mmkv = MMKV('clix.$projectId');
+      _initialized = true;
     } catch (e) {
       ClixLogger.error('Failed to initialize storage service', e);
       rethrow;
@@ -20,40 +35,20 @@ class StorageService {
   }
 
   Future<void> set<T>(String key, T? value) async {
-    try {
-      final prefs = await _preferences;
-
-      if (value == null) {
-        await prefs.remove(key);
-        return;
-      }
-
-      final encoded = jsonEncode(value);
-      await prefs.setString(key, encoded);
-    } catch (e) {
-      ClixLogger.error('Failed to set value for key: $key', e);
-      rethrow;
+    _ensureInitialized();
+    if (value == null) {
+      _mmkv.removeValue(key);
+      return;
     }
+    _mmkv.encodeString(key, jsonEncode(value));
   }
 
   Future<T?> get<T>(String key) async {
     try {
-      final prefs = await _preferences;
-      final data = prefs.getString(key);
+      _ensureInitialized();
+      final data = _mmkv.decodeString(key);
       if (data == null) return null;
-
-      try {
-        final decoded = jsonDecode(data);
-        return decoded as T?;
-      } catch (jsonError) {
-        if (T == String) {
-          ClixLogger.debug(
-              'Found legacy string value for key: $key, migrating to JSON format');
-          await set<T>(key, data as T);
-          return data as T?;
-        }
-        rethrow;
-      }
+      return jsonDecode(data) as T?;
     } catch (e) {
       ClixLogger.error('Failed to get value for key: $key', e);
       return null;
@@ -61,12 +56,28 @@ class StorageService {
   }
 
   Future<void> remove(String key) async {
+    _ensureInitialized();
+    _mmkv.removeValue(key);
+  }
+
+  void _ensureInitialized() {
+    if (!_initialized) {
+      throw StateError('StorageService must be initialized before use');
+    }
+  }
+
+  static Future<String?> getStoredProjectId() async {
     try {
-      final prefs = await _preferences;
-      await prefs.remove(key);
+      String? groupDir;
+      if (Platform.isIOS) {
+        final packageInfo = await PackageInfo.fromPlatform();
+        groupDir = 'group.clix.${packageInfo.packageName}';
+      }
+
+      await MMKV.initialize(groupDir: groupDir, logLevel: MMKVLogLevel.Info);
+      return _defaultMMKV.decodeString(_projectIdKey);
     } catch (e) {
-      ClixLogger.error('Failed to remove key: $key', e);
-      rethrow;
+      return null;
     }
   }
 }

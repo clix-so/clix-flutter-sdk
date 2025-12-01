@@ -1,27 +1,37 @@
 import 'dart:convert';
 import 'dart:io';
+
 import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:http/http.dart' as http;
 import 'package:url_launcher/url_launcher.dart';
 import 'package:uuid/uuid.dart';
 
+import '../core/clix.dart';
 import '../core/clix_config.dart';
+import '../platform/clix_native_bridge.dart';
+import '../platform/messages.g.dart';
 import '../services/clix_api_client.dart';
 import '../services/device_api_service.dart';
 import '../services/event_api_service.dart';
 import '../utils/logging/clix_logger.dart';
+import 'device_service.dart';
 import 'event_service.dart';
 import 'storage_service.dart';
-import 'device_service.dart';
 import 'token_service.dart';
 
 class NotificationService {
   static const String _defaultNotificationIcon = '@mipmap/ic_launcher';
 
   static final NotificationService _instance = NotificationService._internal();
+
   factory NotificationService() => _instance;
-  NotificationService._internal();
+
+  NotificationService._internal() {
+    if (Platform.isIOS) {
+      ClixFlutterApi.setUp(ClixNativeBridge(this));
+    }
+  }
 
   final FirebaseMessaging _firebaseMessaging = FirebaseMessaging.instance;
   final FlutterLocalNotificationsPlugin _localNotifications =
@@ -59,25 +69,27 @@ class NotificationService {
       ClixLogger.info('Initializing notification service');
 
       await _initializeLocalNotifications();
-      final settings = await _requestPermissions();
-      if (settings.authorizationStatus == AuthorizationStatus.denied) {
-        ClixLogger.warn(
-            'Push notification permission denied. User needs to enable it manually in Settings.');
-      }
       _setupMessageHandlers();
-
-      if (settings.authorizationStatus != AuthorizationStatus.denied) {
-        await _getAndUpdateToken();
-        _firebaseMessaging.onTokenRefresh.listen(_onTokenRefresh);
-      } else {
-        ClixLogger.info('Skipping token setup due to denied permissions');
-      }
+      await _getAndUpdateTokenIfPermitted();
+      _firebaseMessaging.onTokenRefresh.listen(_onTokenRefresh);
 
       _isInitialized = true;
       ClixLogger.info('Notification service initialized successfully');
     } catch (e) {
       ClixLogger.error('Failed to initialize notification service', e);
       rethrow;
+    }
+  }
+
+  Future<void> _getAndUpdateTokenIfPermitted() async {
+    try {
+      final settings = await _firebaseMessaging.getNotificationSettings();
+      if (settings.authorizationStatus == AuthorizationStatus.authorized ||
+          settings.authorizationStatus == AuthorizationStatus.provisional) {
+        await _getAndUpdateToken();
+      }
+    } catch (e) {
+      ClixLogger.error('Failed to check permission status', e);
     }
   }
 
@@ -88,6 +100,9 @@ class NotificationService {
       requestAlertPermission: false,
       requestBadgePermission: false,
       requestSoundPermission: false,
+      defaultPresentAlert: true,
+      defaultPresentBadge: true,
+      defaultPresentSound: true,
     );
 
     const initSettings = InitializationSettings(
@@ -107,6 +122,8 @@ class NotificationService {
         description: 'Notifications from Clix',
         importance: Importance.high,
         playSound: true,
+        enableVibration: true,
+        enableLights: true,
       );
 
       await _localNotifications
@@ -121,7 +138,11 @@ class NotificationService {
       final payload = response.payload;
       if (payload != null) {
         final Map<String, dynamic> data = jsonDecode(payload);
-        _handleNotificationTap(data);
+        final remoteMessage = RemoteMessage(
+          data: data.map((key, value) => MapEntry(key, value.toString())),
+        );
+        Clix.Notification.handleNotificationOpened(remoteMessage);
+        handleNotificationTap(data);
       }
     } catch (e) {
       ClixLogger.error('Failed to handle local notification tap', e);
@@ -129,12 +150,6 @@ class NotificationService {
   }
 
   Future<NotificationSettings> _requestPermissions() async {
-    await _firebaseMessaging.setForegroundNotificationPresentationOptions(
-      alert: true,
-      badge: true,
-      sound: true,
-    );
-
     final settings = await _firebaseMessaging.requestPermission(
       alert: true,
       badge: true,
@@ -170,14 +185,15 @@ class NotificationService {
 
       final clixPayload = parseClixPayload(message.data);
       if (clixPayload != null) {
-        ClixLogger.debug('Parsed Clix payload: $clixPayload');
+        final shouldDisplay =
+            await Clix.Notification.handleIncomingMessage(message);
+        if (!shouldDisplay) {
+          return;
+        }
+
         await handlePushReceived(message.data);
-
         await _trackPushNotificationReceived(clixPayload);
-
         await _showClixNotification(message, clixPayload);
-      } else {
-        ClixLogger.warn('No Clix payload found in message');
       }
     } catch (e) {
       ClixLogger.error('Failed to handle foreground message', e);
@@ -186,8 +202,8 @@ class NotificationService {
 
   Future<void> _onMessageOpenedApp(RemoteMessage message) async {
     try {
-      ClixLogger.info('App opened from notification: ${message.messageId}');
-      await _handleNotificationTap(message.data);
+      Clix.Notification.handleNotificationOpened(message);
+      await handleNotificationTap(message.data);
     } catch (e) {
       ClixLogger.error('Failed to handle message opened app', e);
     }
@@ -197,16 +213,15 @@ class NotificationService {
     try {
       final initialMessage = await _firebaseMessaging.getInitialMessage();
       if (initialMessage != null) {
-        ClixLogger.info(
-            'App launched from notification: ${initialMessage.messageId}');
-        await _handleNotificationTap(initialMessage.data);
+        Clix.Notification.handleNotificationOpened(initialMessage);
+        await handleNotificationTap(initialMessage.data);
       }
     } catch (e) {
       ClixLogger.error('Failed to handle initial message', e);
     }
   }
 
-  Future<void> _handleNotificationTap(Map<String, dynamic> data) async {
+  Future<void> handleNotificationTap(Map<String, dynamic> data) async {
     try {
       final clixPayload = parseClixPayload(data);
       if (clixPayload != null) {
@@ -279,6 +294,19 @@ class NotificationService {
     } catch (e) {
       ClixLogger.error('Failed to get FCM token', e);
       return null;
+    }
+  }
+
+  Future<void> deleteToken() async {
+    try {
+      await _firebaseMessaging.deleteToken();
+      _currentToken = null;
+      await _tokenService?.clearTokens();
+      await _deviceService?.upsertToken('');
+      ClixLogger.info('FCM token deleted successfully');
+    } catch (e) {
+      ClixLogger.error('Failed to delete FCM token', e);
+      rethrow;
     }
   }
 
@@ -361,48 +389,50 @@ class NotificationService {
   Future<void> _showClixNotification(
       RemoteMessage message, Map<String, dynamic> clixPayload) async {
     try {
-      if (message.notification != null) {
-        ClixLogger.debug('FCM notification exists, letting system handle it');
-        return;
-      }
-
-      final notificationContent = _extractNotificationContent(clixPayload);
-      ClixLogger.debug(
-          'Showing Clix notification: ${notificationContent.title} - ${notificationContent.body}');
-
-      final imagePath = notificationContent.imageUrl != null
-          ? await _downloadImage(notificationContent.imageUrl!)
+      final content = _extractNotificationContent(clixPayload);
+      final imagePath = content.imageUrl != null
+          ? await _downloadImage(content.imageUrl!)
           : null;
 
-      final notificationDetails = _createNotificationDetails(imagePath);
+      final notificationDetails = _createNotificationDetails(
+        imagePath,
+        content.title,
+        content.body,
+      );
 
       await _localNotifications.show(
         message.hashCode,
-        notificationContent.title,
-        notificationContent.body,
+        content.title,
+        content.body,
         notificationDetails,
         payload: jsonEncode(message.data),
       );
 
-      ClixLogger.info('Clix notification displayed successfully');
+      ClixLogger.info('Clix notification displayed: ${content.title}');
     } catch (e) {
       ClixLogger.error('Failed to show Clix notification', e);
     }
   }
 
-  Future<bool> requestNotificationPermission() async {
+  Future<AuthorizationStatus> requestNotificationPermission() async {
     try {
       ClixLogger.info('Requesting notification permission');
 
       final settings = await _requestPermissions();
-      final granted =
-          settings.authorizationStatus == AuthorizationStatus.authorized;
+      final status = settings.authorizationStatus;
 
-      ClixLogger.info('Notification permission granted: $granted');
-      return granted;
+      ClixLogger.info('Notification permission status: $status');
+
+      // If permission granted, ensure token is registered
+      if (status == AuthorizationStatus.authorized ||
+          status == AuthorizationStatus.provisional) {
+        await _getAndUpdateToken();
+      }
+
+      return status;
     } catch (e) {
       ClixLogger.error('Failed to request notification permission', e);
-      return false;
+      return AuthorizationStatus.denied;
     }
   }
 
@@ -477,15 +507,26 @@ class NotificationService {
   }
 
   bool get isInitialized => _isInitialized;
+
   String? get currentToken => _currentToken;
 
-  NotificationDetails _createNotificationDetails(String? imagePath) {
+  NotificationDetails _createNotificationDetails(
+      String? imagePath, String? title, String? body) {
     final androidDetails = AndroidNotificationDetails(
       'clix_channel',
       'Clix Notifications',
       channelDescription: 'Notifications from Clix',
       importance: Importance.high,
       priority: Priority.high,
+      category: AndroidNotificationCategory.message,
+      visibility: NotificationVisibility.public,
+      groupKey: 'clix_notification_group',
+      setAsGroupSummary: false,
+      groupAlertBehavior: GroupAlertBehavior.children,
+      enableVibration: true,
+      enableLights: true,
+      playSound: true,
+      ticker: body,
       icon: _defaultNotificationIcon,
       largeIcon: imagePath != null
           ? FilePathAndroidBitmap(imagePath)
@@ -495,13 +536,15 @@ class NotificationService {
               FilePathAndroidBitmap(imagePath),
               largeIcon: FilePathAndroidBitmap(imagePath),
             )
-          : null,
+          : BigTextStyleInformation(body ?? ''),
     );
 
-    const iosDetails = DarwinNotificationDetails(
+    final iosDetails = DarwinNotificationDetails(
       presentAlert: true,
       presentBadge: true,
       presentSound: true,
+      attachments:
+          imagePath != null ? [DarwinNotificationAttachment(imagePath)] : null,
     );
 
     return NotificationDetails(
@@ -705,30 +748,45 @@ class _NotificationContent {
 @pragma('vm:entry-point')
 Future<void> _firebaseMessagingBackgroundHandler(RemoteMessage message) async {
   try {
-    ClixLogger.info('Background message received: ${message.messageId}');
-    ClixLogger.debug('Background message data: ${message.data}');
-    ClixLogger.debug('Background notification: ${message.notification}');
+    await Clix.Notification.handleBackgroundMessage(message);
 
-    final storageService = StorageService();
     final clixPayload = _parseClixPayloadStatic(message.data);
-
+    if (clixPayload == null) {
+      return;
+    }
+    final storageService = await _initializeStorageForBackground();
+    if (storageService == null) {
+      return;
+    }
     await _storeBackgroundNotificationData(
         storageService, message, clixPayload);
+    await _trackPushNotificationReceivedInBackground(
+        storageService, clixPayload);
 
-    if (clixPayload != null) {
-      await _trackPushNotificationReceivedInBackground(clixPayload);
-
-      if (message.notification == null) {
-        await _showBackgroundNotification(message, clixPayload);
-      }
+    if (message.notification == null) {
+      await _showBackgroundNotification(message, clixPayload);
     }
   } catch (e) {
     ClixLogger.error('Failed to handle background message', e);
   }
 }
 
+Future<StorageService?> _initializeStorageForBackground() async {
+  try {
+    final projectId = await StorageService.getStoredProjectId();
+    if (projectId == null) return null;
+
+    final storageService = StorageService();
+    await storageService.initialize(projectId);
+    return storageService;
+  } catch (e) {
+    ClixLogger.error('Failed to initialize storage for background', e);
+    return null;
+  }
+}
+
 Future<void> _trackPushNotificationReceivedInBackground(
-    Map<String, dynamic> clixPayload) async {
+    StorageService storageService, Map<String, dynamic> clixPayload) async {
   final messageId = clixPayload['message_id'] as String?;
   if (messageId == null) {
     ClixLogger.warn('No message_id found in payload, skipping event tracking');
@@ -736,8 +794,6 @@ Future<void> _trackPushNotificationReceivedInBackground(
   }
 
   try {
-    final storageService = StorageService();
-
     final configData =
         await storageService.get<Map<String, dynamic>>('clix_config');
     if (configData == null) {
@@ -850,7 +906,11 @@ Future<void> _showBackgroundNotification(
       ? await NotificationService._downloadNotificationImage(content.imageUrl!)
       : null;
 
-  final notificationDetails = _createBackgroundNotificationDetails(imagePath);
+  final notificationDetails = _createBackgroundNotificationDetails(
+    imagePath,
+    content.title,
+    content.body,
+  );
 
   await flutterLocalNotificationsPlugin.show(
     message.hashCode,
@@ -876,6 +936,8 @@ Future<void> _initializeBackgroundNotifications(
     description: 'Notifications from Clix',
     importance: Importance.high,
     playSound: true,
+    enableVibration: true,
+    enableLights: true,
   );
 
   await plugin
@@ -884,13 +946,23 @@ Future<void> _initializeBackgroundNotifications(
       ?.createNotificationChannel(androidChannel);
 }
 
-NotificationDetails _createBackgroundNotificationDetails(String? imagePath) {
+NotificationDetails _createBackgroundNotificationDetails(
+    String? imagePath, String? title, String? body) {
   final androidDetails = AndroidNotificationDetails(
     'clix_channel',
     'Clix Notifications',
     channelDescription: 'Notifications from Clix',
     importance: Importance.high,
     priority: Priority.high,
+    category: AndroidNotificationCategory.message,
+    visibility: NotificationVisibility.public,
+    groupKey: 'clix_notification_group',
+    setAsGroupSummary: false,
+    groupAlertBehavior: GroupAlertBehavior.children,
+    enableVibration: true,
+    enableLights: true,
+    playSound: true,
+    ticker: body,
     icon: NotificationService._defaultNotificationIcon,
     largeIcon: imagePath != null
         ? FilePathAndroidBitmap(imagePath)
@@ -901,7 +973,7 @@ NotificationDetails _createBackgroundNotificationDetails(String? imagePath) {
             FilePathAndroidBitmap(imagePath),
             largeIcon: FilePathAndroidBitmap(imagePath),
           )
-        : null,
+        : BigTextStyleInformation(body ?? ''),
   );
 
   return NotificationDetails(android: androidDetails);

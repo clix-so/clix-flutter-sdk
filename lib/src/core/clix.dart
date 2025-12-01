@@ -12,8 +12,17 @@ import '../utils/clix_error.dart';
 import '../utils/logging/clix_log_level.dart';
 import '../utils/logging/clix_logger.dart';
 import 'clix_config.dart';
+import 'clix_notification.dart';
 
 class Clix {
+  /// Notification management interface for handling push notifications,
+  /// permissions, and related functionality.
+  ///
+  /// Use this to configure notification behavior, register handlers, and
+  /// manage FCM tokens.
+  // ignore: non_constant_identifier_names
+  static final ClixNotification Notification = ClixNotification();
+
   static Clix? _shared;
   static bool _isInitializing = false;
   static final _initCompleter = Completer<void>();
@@ -59,6 +68,7 @@ class Clix {
   Future<void> _setConfig(ClixConfig config) async {
     // Initialize storage service
     _storageService = StorageService();
+    await _storageService!.initialize(config.projectId);
 
     // Store configuration
     await _storageService!.set<String>('project_id', config.projectId);
@@ -182,18 +192,18 @@ class Clix {
     return deviceId;
   }
 
-  /// Get push token
-  static Future<String?> getPushToken() async {
-    await _waitForInitialization();
-    return _shared!._notificationService!.getCurrentToken();
-  }
-
   static void setLogLevel(ClixLogLevel level) {
     ClixLogger.setLogLevel(level);
   }
 
   /// Check if SDK is initialized
   static bool get isInitialized => _shared != null;
+
+  // Internal access for ClixNotification
+  static Future<void> waitForInitialization() => _waitForInitialization();
+  static NotificationService? get notificationServiceInstance =>
+      _shared?._notificationService;
+  static DeviceService? get deviceServiceInstance => _shared?._deviceService;
 
   /// Track event
   static Future<void> trackEvent(

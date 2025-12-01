@@ -1,227 +1,253 @@
 # iOS Integration Guide
 
-This guide explains how to integrate the Clix Flutter SDK with iOS push notifications, including rich notifications and deep linking.
+This guide explains how to integrate the Clix Flutter SDK with iOS push notifications, including rich notifications and notification handlers.
 
 ## Prerequisites
 
-- iOS 10.0+
+- iOS 14.0+
 - Firebase project configured
 - `GoogleService-Info.plist` added to your iOS project
 - Push notification capabilities enabled in Xcode
 
 ## Basic Setup
 
-### 1. Configure Firebase
+### 1. Enable Capabilities in Xcode
 
-Ensure Firebase is configured in your `AppDelegate.swift`:
+1. Open your iOS project in Xcode
+2. Select your app target
+3. Go to **Signing & Capabilities**
+4. Add **Push Notifications** capability
+5. Add **Background Modes** capability and enable **Remote notifications**
 
-```swift
-import Firebase
+### 2. Configure Firebase
 
-// In application:didFinishLaunchingWithOptions
-FirebaseApp.configure()
-```
+Ensure Firebase is configured in your Flutter app before initializing Clix:
 
-### 2. Update AppDelegate
+```dart
+import 'package:firebase_core/firebase_core.dart';
+import 'package:clix_flutter/clix_flutter.dart';
 
-**Option A: Inherit from ClixAppDelegate (Recommended)**
+void main() async {
+  WidgetsFlutterBinding.ensureInitialized();
 
-```swift
-import Flutter
-import UIKit
-import Firebase
-import clix_flutter
+  // Initialize Firebase first
+  await Firebase.initializeApp();
 
-@main
-@objc class AppDelegate: ClixAppDelegate {
-  override func application(
-    _ application: UIApplication,
-    didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey: Any]?
-  ) -> Bool {
-    // Configure Firebase before calling super
-    FirebaseApp.configure()
-    
-    // Register generated plugins
-    GeneratedPluginRegistrant.register(with: self)
-    
-    // ClixAppDelegate handles all notification setup
-    return super.application(application, didFinishLaunchingWithOptions: launchOptions)
-  }
+  // Initialize Clix SDK
+  await Clix.initialize(const ClixConfig(
+    projectId: 'YOUR_PROJECT_ID',
+    apiKey: 'YOUR_API_KEY',
+  ));
+
+  runApp(MyApp());
 }
 ```
 
-**Option B: Manual Integration**
+## Push Notification Handlers
 
-```swift
-import Flutter
-import UIKit
-import Firebase
-import UserNotifications
-import clix_flutter
+Register notification handlers to customize notification behavior:
 
-@main
-@objc class AppDelegate: FlutterAppDelegate {
-  override func application(
-    _ application: UIApplication,
-    didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey: Any]?
-  ) -> Bool {
-    FirebaseApp.configure()
-    
-    // Setup Clix notifications
-    ClixAppDelegate.setupNotifications(application: application, launchOptions: launchOptions)
-    
-    GeneratedPluginRegistrant.register(with: self)
-    return super.application(application, didFinishLaunchingWithOptions: launchOptions)
-  }
-  
-  // You'll need to implement notification delegate methods manually
-  // See ClixAppDelegate.swift for reference implementations
+```dart
+void main() async {
+  WidgetsFlutterBinding.ensureInitialized();
+
+  await Firebase.initializeApp();
+  await Clix.initialize(const ClixConfig(
+    projectId: 'YOUR_PROJECT_ID',
+    apiKey: 'YOUR_API_KEY',
+  ));
+
+  // Foreground message handler
+  Clix.Notification.onMessage((notificationData) async {
+    // Return true to display the notification, false to suppress it
+    return true;
+  });
+
+  // Background message handler
+  Clix.Notification.onBackgroundMessage((notificationData) async {
+    print('Background notification: $notificationData');
+  });
+
+  // Notification tap handler
+  Clix.Notification.onNotificationOpened((notificationData) {
+    final clixData = notificationData['clix'] as Map<String, dynamic>?;
+    final landingURL = clixData?['landing_url'] as String?;
+    if (landingURL != null) {
+      // Handle custom routing
+    }
+  });
+
+  // Token error handler
+  Clix.Notification.onFcmTokenError((error) {
+    print('FCM token error: $error');
+  });
+
+  runApp(MyApp());
 }
 ```
 
-## Rich Notifications (Recommended)
+### About `notificationData`
 
-To support rich notifications with images and enhanced content:
+- The `notificationData` map contains the full FCM/APNs payload
+- `notificationData['clix']` holds Clix metadata (message_id, landing_url, etc.)
+- All other keys represent custom data from your backend
+
+## Rich Notifications with Notification Service Extension
+
+To support images and rich content in notifications:
 
 ### 1. Create Notification Service Extension
 
 1. In Xcode, go to **File → New → Target**
 2. Select **Notification Service Extension**
-3. Name it (e.g., "ClixNotificationExtension")
-4. Replace the generated `NotificationService.swift` with:
+3. Name it (e.g., "NotificationServiceExtension")
+4. Choose Swift as the language
+
+### 2. Configure App Group (Required for MMKV)
+
+The SDK uses MMKV for storage with automatic app group support:
+
+1. In Xcode, select your **main app target**
+2. Go to **Signing & Capabilities**
+3. Add **App Groups** capability
+4. Add a new app group: `group.clix.YOUR_BUNDLE_ID`
+
+5. Repeat for your **Notification Service Extension target**:
+   - Add **App Groups** capability
+   - Enable the **same** app group: `group.clix.YOUR_BUNDLE_ID`
+
+**Note:** The SDK automatically uses `group.clix.{bundleId}` format. You must create this app group in both targets.
+
+### 3. Update Extension Code
+
+Replace `NotificationService.swift` in your extension:
 
 ```swift
 import UserNotifications
 import clix_flutter
 
 class NotificationService: ClixNotificationServiceExtension {
-    override func didReceive(
-        _ request: UNNotificationRequest,
-        withContentHandler contentHandler: @escaping (UNNotificationContent) -> Void
-    ) {
-        // ClixNotificationServiceExtension handles all rich notification processing
-        super.didReceive(request, withContentHandler: contentHandler)
-    }
+  override func didReceive(
+    _ request: UNNotificationRequest,
+    withContentHandler contentHandler: @escaping (UNNotificationContent) -> Void
+  ) {
+    // Register with your project ID
+    register(projectId: "YOUR_PROJECT_ID")
+
+    // ClixNotificationServiceExtension handles image downloading and tracking
+    super.didReceive(request, withContentHandler: contentHandler)
+  }
 }
 ```
 
-### 2. Configure Extension Target
+### 4. Add clix_flutter to Extension
 
-1. Add `clix_flutter` as a dependency to your extension target
-2. Ensure the extension's deployment target is iOS 10.0+
-3. Add Firebase dependencies if needed for analytics
+In your `ios/Podfile`, ensure the extension target has access to the plugin:
 
-### 3. Update Info.plist
+```ruby
+target 'NotificationServiceExtension' do
+  use_frameworks!
+  use_modular_headers!
 
-The extension's `Info.plist` should include:
-
-```xml
-<key>NSExtension</key>
-<dict>
-    <key>NSExtensionPointIdentifier</key>
-    <string>com.apple.usernotifications.service</string>
-    <key>NSExtensionPrincipalClass</key>
-    <string>$(PRODUCT_MODULE_NAME).NotificationService</string>
-</dict>
+  # Add clix_flutter pod
+  pod 'clix_flutter', :path => '.symlinks/plugins/clix_flutter/ios'
+end
 ```
 
-## Capabilities and Permissions
+Then run:
+```bash
+cd ios && pod install
+```
 
-### 1. Enable Push Notifications
-
-In Xcode project settings:
-1. Go to **Signing & Capabilities**
-2. Add **Push Notifications** capability
-3. Add **Background Modes** capability
-4. Enable **Remote notifications** in Background Modes
-
-### 2. Request Permissions
-
-The SDK automatically requests permissions, but you can also manually request them:
+## Token Management
 
 ```dart
-// In your Flutter app
-bool granted = await Clix.requestNotificationPermissions();
-if (granted) {
-  print('Notification permissions granted');
-} else {
-  print('Notification permissions denied');
-}
+// Get current FCM token
+final token = await Clix.Notification.getToken();
+
+// Delete FCM token
+await Clix.Notification.deleteToken();
 ```
-
-## Features Supported
-
-### ✅ Implemented Features
-
-- **Foreground Notifications**: Display notifications when app is active
-- **Background Notifications**: Handle notifications when app is backgrounded
-- **Notification Taps**: Handle user taps with deep linking
-- **Rich Media**: Images and enhanced content in notifications
-- **Badge Management**: Set and clear app icon badge numbers
-- **Landing URLs**: Automatic opening of URLs from notification taps
-- **Permission Management**: Request and check notification permissions
-- **Firebase Integration**: Full FCM token management
-
-### 🔄 Event Handling
-
-The iOS implementation automatically forwards these events to Flutter:
-
-- `onNotificationReceived`: When notification arrives in foreground
-- `onNotificationTapped`: When user taps a notification
-- `onTokenRefresh`: When FCM token changes
-
-### 📱 Deep Linking
-
-Notifications with `landing_url` in the Clix payload will automatically:
-1. Open the URL when notification is tapped
-2. Handle app state transitions properly
-3. Queue URLs if app is not ready
 
 ## Troubleshooting
 
-### Common Issues
+### Notifications Not Showing
 
-1. **Notifications not showing**: Check Firebase configuration and APNS certificates
-2. **Rich images not loading**: Ensure Notification Service Extension is properly configured
-3. **Deep links not working**: Verify URL schemes are registered in Info.plist
-4. **Extension crashes**: Check that clix_flutter is added as dependency to extension target
+If notifications aren't appearing:
 
-### Debug Logging
+1. ✅ Push Notifications capability is enabled in Xcode
+2. ✅ Background Modes > Remote notifications is enabled
+3. ✅ `GoogleService-Info.plist` is added to the project
+4. ✅ Testing on a real device (not simulator)
+5. ✅ APNs certificates are configured in Firebase Console
 
-Enable debug logging to see detailed notification handling:
+### Rich Notifications Not Working
 
-```swift
-// In AppDelegate
-override func application(...) -> Bool {
-    // Enable debug logging before other setup
-    NSLog("Debug logging enabled")
-    // ... rest of setup
-}
+If images aren't appearing:
+
+1. ✅ Notification Service Extension is created
+2. ✅ App Groups capability is added to **both** main app and extension
+3. ✅ Same app group ID is enabled in both targets: `group.clix.{bundleId}`
+4. ✅ `clix_flutter` pod is added to extension target
+5. ✅ Extension calls `register(projectId:)` with correct project ID
+
+### App Group Issues
+
+If the extension can't access shared data:
+
+1. Verify app group format: `group.clix.{YOUR_BUNDLE_ID}`
+2. Check that both targets have the capability enabled
+3. Ensure you're using the exact same group identifier
+4. Check Xcode logs for MMKV initialization messages
+
+### FCM Token Errors
+
+Enable error handler to diagnose token issues:
+
+```dart
+Clix.Notification.onFcmTokenError((error) {
+  print('FCM token error: $error');
+});
 ```
 
-### Firebase Console
+Common causes:
+- Missing or invalid `GoogleService-Info.plist`
+- APNs certificates not configured in Firebase Console
+- Network connectivity issues
 
-Verify in Firebase Console:
-1. iOS app is properly configured
-2. APNS certificates are uploaded
-3. FCM tokens are being generated
+### Getting Help
 
-## Migration from Native Implementation
+If you continue to experience issues:
 
-If you're migrating from a native iOS implementation:
+1. Enable debug logging: `logLevel: ClixLogLevel.debug`
+2. Check Xcode console for error messages
+3. Verify device appears in Clix console with push token
+4. Create an issue on [GitHub](https://github.com/clix-so/clix-flutter-sdk/issues)
 
-1. Remove custom `UNUserNotificationCenterDelegate` implementations
-2. Remove manual Firebase Messaging setup
-3. Replace with `ClixAppDelegate` inheritance
-4. Update Notification Service Extension to use `ClixNotificationServiceExtension`
+## Sample Implementation
 
-The new implementation provides the same functionality with significantly less code.
+See `samples/basic_app/ios/Runner/AppDelegate.swift` for a complete working example.
 
-## Sample Code
+## Migration Notes
 
-See `/samples/basic_app/ios/` for a complete working example including:
-- `AppDelegate.swift` - Main app delegate setup
-- `ClixNotificationExtension/` - Notification service extension
-- Project configuration examples
+### From Previous Versions
 
-This implementation provides feature parity with Android while using modern iOS APIs and maintaining compatibility with Flutter's Firebase plugins.
+If you're upgrading from an earlier version:
+
+1. Update to latest `clix_flutter` version
+2. Replace old notification handling code with new `Clix.Notification` API
+3. Update Notification Service Extension if using rich notifications
+4. Add App Groups capability for MMKV storage (automatic setup)
+
+## Features
+
+- ✅ Foreground notification display
+- ✅ Background notification handling
+- ✅ Notification tap handling with deep linking
+- ✅ Rich notifications with images
+- ✅ Automatic token management
+- ✅ Event tracking (delivered, opened)
+- ✅ App group support for extensions (automatic)
+- ✅ Thread-safe operations
+
+This integration provides full feature parity with the native iOS SDK while maintaining Flutter's cross-platform benefits.
