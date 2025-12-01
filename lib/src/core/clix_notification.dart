@@ -35,8 +35,8 @@ class ClixNotification {
   Future<AuthorizationStatus> requestPermission() async {
     try {
       await Clix.waitForInitialization();
-      final status =
-          await Clix.notificationServiceInstance?.requestNotificationPermission();
+      final status = await Clix.notificationServiceInstance
+          ?.requestNotificationPermission();
       return status ?? AuthorizationStatus.denied;
     } catch (e) {
       ClixLogger.error('Failed to request permission', e);
@@ -63,7 +63,8 @@ class ClixNotification {
   Future<void> setPermissionGranted(bool isGranted) async {
     try {
       await Clix.waitForInitialization();
-      await Clix.deviceServiceInstance?.upsertIsPushPermissionGranted(isGranted);
+      await Clix.deviceServiceInstance
+          ?.upsertIsPushPermissionGranted(isGranted);
     } catch (e) {
       ClixLogger.error('Failed to set permission granted', e);
       rethrow;
@@ -147,6 +148,10 @@ class ClixNotification {
 
   void handleFcmTokenError(Exception error) {
     ClixLogger.error('FCM token error', error);
-    _onFcmTokenError?.call(error);
+    try {
+      _onFcmTokenError?.call(error);
+    } catch (e) {
+      ClixLogger.error('FCM token error handler failed', e);
+    }
   }
 }

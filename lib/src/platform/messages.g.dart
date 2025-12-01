@@ -17,7 +17,8 @@ PlatformException _createConnectionError(String channelName) {
   );
 }
 
-List<Object?> wrapResponse({Object? result, PlatformException? error, bool empty = false}) {
+List<Object?> wrapResponse(
+    {Object? result, PlatformException? error, bool empty = false}) {
   if (empty) {
     return <Object?>[];
   }
@@ -26,7 +27,6 @@ List<Object?> wrapResponse({Object? result, PlatformException? error, bool empty
   }
   return <Object?>[error.code, error.message, error.details];
 }
-
 
 class _PigeonCodec extends StandardMessageCodec {
   const _PigeonCodec();
@@ -53,15 +53,16 @@ class ClixHostApi {
   /// Constructor for [ClixHostApi].  The [binaryMessenger] named argument is
   /// available for dependency injection.  If it is left null, the default
   /// BinaryMessenger will be used which routes to the host platform.
-  ClixHostApi({BinaryMessenger? binaryMessenger, String messageChannelSuffix = ''})
+  ClixHostApi(
+      {BinaryMessenger? binaryMessenger, String messageChannelSuffix = ''})
       : pigeonVar_binaryMessenger = binaryMessenger,
-        pigeonVar_messageChannelSuffix = messageChannelSuffix.isNotEmpty ? '.$messageChannelSuffix' : '';
+        pigeonVar_messageChannelSuffix =
+            messageChannelSuffix.isNotEmpty ? '.$messageChannelSuffix' : '';
   final BinaryMessenger? pigeonVar_binaryMessenger;
 
   static const MessageCodec<Object?> pigeonChannelCodec = _PigeonCodec();
 
   final String pigeonVar_messageChannelSuffix;
-
 }
 
 abstract class ClixFlutterApi {
@@ -69,20 +70,29 @@ abstract class ClixFlutterApi {
 
   void onNotificationTapped(Map<String?, Object?> userInfo);
 
-  static void setUp(ClixFlutterApi? api, {BinaryMessenger? binaryMessenger, String messageChannelSuffix = '',}) {
-    messageChannelSuffix = messageChannelSuffix.isNotEmpty ? '.$messageChannelSuffix' : '';
+  static void setUp(
+    ClixFlutterApi? api, {
+    BinaryMessenger? binaryMessenger,
+    String messageChannelSuffix = '',
+  }) {
+    messageChannelSuffix =
+        messageChannelSuffix.isNotEmpty ? '.$messageChannelSuffix' : '';
     {
-      final BasicMessageChannel<Object?> pigeonVar_channel = BasicMessageChannel<Object?>(
-          'dev.flutter.pigeon.clix_flutter.ClixFlutterApi.onNotificationTapped$messageChannelSuffix', pigeonChannelCodec,
+      final BasicMessageChannel<
+          Object?> pigeonVar_channel = BasicMessageChannel<
+              Object?>(
+          'dev.flutter.pigeon.clix_flutter.ClixFlutterApi.onNotificationTapped$messageChannelSuffix',
+          pigeonChannelCodec,
           binaryMessenger: binaryMessenger);
       if (api == null) {
         pigeonVar_channel.setMessageHandler(null);
       } else {
         pigeonVar_channel.setMessageHandler((Object? message) async {
           assert(message != null,
-          'Argument for dev.flutter.pigeon.clix_flutter.ClixFlutterApi.onNotificationTapped was null.');
+              'Argument for dev.flutter.pigeon.clix_flutter.ClixFlutterApi.onNotificationTapped was null.');
           final List<Object?> args = (message as List<Object?>?)!;
-          final Map<String?, Object?>? arg_userInfo = (args[0] as Map<Object?, Object?>?)?.cast<String?, Object?>();
+          final Map<String?, Object?>? arg_userInfo =
+              (args[0] as Map<Object?, Object?>?)?.cast<String?, Object?>();
           assert(arg_userInfo != null,
               'Argument for dev.flutter.pigeon.clix_flutter.ClixFlutterApi.onNotificationTapped was null, expected non-null Map<String?, Object?>.');
           try {
@@ -90,8 +100,9 @@ abstract class ClixFlutterApi {
             return wrapResponse(empty: true);
           } on PlatformException catch (e) {
             return wrapResponse(error: e);
-          }          catch (e) {
-            return wrapResponse(error: PlatformException(code: 'error', message: e.toString()));
+          } catch (e) {
+            return wrapResponse(
+                error: PlatformException(code: 'error', message: e.toString()));
           }
         });
       }

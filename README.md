@@ -8,7 +8,7 @@ Add this to your package's `pubspec.yaml` file:
 
 ```yaml
 dependencies:
-  clix_flutter: ^0.0.2
+  clix_flutter: ^0.0.3
 ```
 
 Then run:
@@ -245,7 +245,7 @@ void main() async {
 
 When a background message arrives, the execution order is:
 
-```
+```text
 1. Firebase receives RemoteMessage
        ↓
 2. Clix SDK internal handler runs (logging, setup)

@@ -131,7 +131,6 @@ class NotificationService {
               AndroidFlutterLocalNotificationsPlugin>()
           ?.createNotificationChannel(androidChannel);
     }
-
   }
 
   void _onLocalNotificationTapped(NotificationResponse response) {
@@ -544,9 +543,8 @@ class NotificationService {
       presentAlert: true,
       presentBadge: true,
       presentSound: true,
-      attachments: imagePath != null
-          ? [DarwinNotificationAttachment(imagePath)]
-          : null,
+      attachments:
+          imagePath != null ? [DarwinNotificationAttachment(imagePath)] : null,
     );
 
     return NotificationDetails(
