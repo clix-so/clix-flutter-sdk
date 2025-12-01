@@ -56,6 +56,20 @@ class ClixNotification {
     }
   }
 
+  /// Updates the push permission status on the server.
+  ///
+  /// Use this to manually sync the permission status when needed,
+  /// for example after the user changes notification settings in system settings.
+  Future<void> setPermissionGranted(bool isGranted) async {
+    try {
+      await Clix.waitForInitialization();
+      await Clix.deviceServiceInstance?.upsertIsPushPermissionGranted(isGranted);
+    } catch (e) {
+      ClixLogger.error('Failed to set permission granted', e);
+      rethrow;
+    }
+  }
+
   /// Whether landing URLs should be automatically opened on notification tap.
   bool get autoHandleLandingURL => _autoHandleLandingURL;
 

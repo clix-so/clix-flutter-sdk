@@ -203,6 +203,7 @@ class Clix {
   static Future<void> waitForInitialization() => _waitForInitialization();
   static NotificationService? get notificationServiceInstance =>
       _shared?._notificationService;
+  static DeviceService? get deviceServiceInstance => _shared?._deviceService;
 
   /// Track event
   static Future<void> trackEvent(

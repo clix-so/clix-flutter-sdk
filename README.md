@@ -330,6 +330,32 @@ if (status == AuthorizationStatus.authorized) {
 final currentStatus = await Clix.Notification.getPermissionStatus();
 ```
 
+##### Update Permission Status
+
+If you've disabled automatic permission requests (default is `false`), you must manually notify Clix when users grant or deny push permissions.
+
+After requesting push permissions in your app, call `Clix.Notification.setPermissionGranted()`:
+
+```dart
+final settings = await FirebaseMessaging.instance.requestPermission(
+  alert: true,
+  badge: true,
+  sound: true,
+);
+
+final isGranted = settings.authorizationStatus == AuthorizationStatus.authorized ||
+    settings.authorizationStatus == AuthorizationStatus.provisional;
+
+// Notify Clix SDK about permission status
+await Clix.Notification.setPermissionGranted(isGranted);
+
+if (isGranted) {
+  print('Push notifications enabled!');
+}
+```
+
+This ensures Clix can accurately track permission status for your users and target campaigns appropriately.
+
 ##### Migrating from Existing flutter_local_notifications Setup
 
 If your app already uses `flutter_local_notifications` with a custom callback, migrate to `onNotificationOpened`:
@@ -387,6 +413,7 @@ If push notifications aren't working, verify:
 3. ✅ Push Notifications capability is enabled (iOS)
 4. ✅ Testing on a real device (push notifications don't work on iOS simulator)
 5. ✅ Debug logs show FCM token registration messages
+6. ✅ `Clix.Notification.setPermissionGranted()` is called after requesting permissions (when not using auto-request)
 
 ### FCM Token Errors
 

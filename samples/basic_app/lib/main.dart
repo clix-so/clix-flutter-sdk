@@ -28,6 +28,7 @@ class BasicApplication {
 
     // Initialize Clix SDK with the loaded configuration
     await Clix.initialize(config);
+    await Clix.Notification.configure(autoRequestPermission: true);
 
     await _updateClixValues();
 
