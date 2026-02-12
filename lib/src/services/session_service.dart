@@ -35,6 +35,7 @@ class SessionService with WidgetsBindingObserver {
     if (lastActivity != null) {
       final elapsed = DateTime.now().millisecondsSinceEpoch - lastActivity;
       if (elapsed <= _effectiveTimeoutMs) {
+        _pendingMessageId = null;
         await _updateLastActivity();
         ClixLogger.debug('Continuing existing session');
         return;
@@ -64,6 +65,7 @@ class SessionService with WidgetsBindingObserver {
     if (lastActivity != null) {
       final elapsed = DateTime.now().millisecondsSinceEpoch - lastActivity;
       if (elapsed <= _effectiveTimeoutMs) {
+        _pendingMessageId = null;
         await _updateLastActivity();
         return;
       }
