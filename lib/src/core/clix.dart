@@ -6,6 +6,7 @@ import '../services/device_service.dart';
 import '../services/event_api_service.dart';
 import '../services/event_service.dart';
 import '../services/notification_service.dart';
+import '../services/session_service.dart';
 import '../services/storage_service.dart';
 import '../services/token_service.dart';
 import '../utils/clix_error.dart';
@@ -31,6 +32,7 @@ class Clix {
   StorageService? _storageService;
   EventService? _eventService;
   DeviceService? _deviceService;
+  SessionService? _sessionService;
   NotificationService? _notificationService;
 
   Clix._();
@@ -101,6 +103,13 @@ class Clix {
       deviceService: _deviceService!,
     );
 
+    // Initialize session service
+    _sessionService = SessionService(
+      storageService: _storageService!,
+      eventService: _eventService!,
+      sessionTimeoutMs: config.sessionTimeoutMs,
+    );
+
     // Initialize notification service
     _notificationService = NotificationService();
     await _notificationService!.initialize(
@@ -108,7 +117,11 @@ class Clix {
       storageService: _storageService!,
       deviceService: _deviceService!,
       tokenService: tokenService,
+      sessionService: _sessionService,
     );
+
+    // Start session (after notification service so initial notification can set pendingMessageId)
+    await _sessionService!.start();
   }
 
   /// Wait for initialization with timeout protection

@@ -15,6 +15,7 @@ ClixConfig _$ClixConfigFromJson(Map json) => ClixConfig(
       extraHeaders: (json['extra_headers'] as Map?)?.map(
         (k, e) => MapEntry(k as String, e as String),
       ),
+      sessionTimeoutMs: (json['session_timeout_ms'] as num?)?.toInt() ?? 30000,
     );
 
 Map<String, dynamic> _$ClixConfigToJson(ClixConfig instance) =>
@@ -24,6 +25,7 @@ Map<String, dynamic> _$ClixConfigToJson(ClixConfig instance) =>
       'endpoint': instance.endpoint,
       'log_level': _$ClixLogLevelEnumMap[instance.logLevel]!,
       'extra_headers': instance.extraHeaders,
+      'session_timeout_ms': instance.sessionTimeoutMs,
     };
 
 const _$ClixLogLevelEnumMap = {

@@ -10,6 +10,7 @@ class ClixConfig {
   final String endpoint;
   final ClixLogLevel logLevel;
   final Map<String, String>? extraHeaders;
+  final int sessionTimeoutMs;
 
   const ClixConfig({
     required this.projectId,
@@ -17,6 +18,7 @@ class ClixConfig {
     this.endpoint = 'https://api.clix.so',
     this.logLevel = ClixLogLevel.error,
     this.extraHeaders,
+    this.sessionTimeoutMs = 30000,
   });
 
   Map<String, dynamic> toJson() => _$ClixConfigToJson(this);

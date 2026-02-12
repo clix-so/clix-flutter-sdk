@@ -17,6 +17,7 @@ import '../services/event_api_service.dart';
 import '../utils/logging/clix_logger.dart';
 import 'device_service.dart';
 import 'event_service.dart';
+import 'session_service.dart';
 import 'storage_service.dart';
 import 'token_service.dart';
 
@@ -41,6 +42,7 @@ class NotificationService {
   StorageService? _storageService;
   DeviceService? _deviceService;
   TokenService? _tokenService;
+  SessionService? _sessionService;
 
   bool _isInitialized = false;
   String? _currentToken;
@@ -53,6 +55,7 @@ class NotificationService {
     required StorageService storageService,
     DeviceService? deviceService,
     TokenService? tokenService,
+    SessionService? sessionService,
     Function(Map<String, dynamic>)? onPushReceived,
     Function(Map<String, dynamic>)? onPushTapped,
   }) async {
@@ -62,6 +65,7 @@ class NotificationService {
     _storageService = storageService;
     _deviceService = deviceService;
     _tokenService = tokenService;
+    _sessionService = sessionService;
     this.onPushReceived = onPushReceived;
     this.onPushTapped = onPushTapped;
 
@@ -343,6 +347,8 @@ class NotificationService {
     try {
       final clixPayload = parseClixPayload(userInfo);
       if (clixPayload != null) {
+        final messageId = clixPayload['message_id'] as String?;
+        _sessionService?.setPendingMessageId(messageId);
         await _trackPushEvent('PUSH_NOTIFICATION_TAPPED', clixPayload);
       }
       onPushTapped?.call(userInfo);
