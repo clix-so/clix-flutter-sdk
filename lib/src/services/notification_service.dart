@@ -73,7 +73,7 @@ class NotificationService {
       ClixLogger.info('Initializing notification service');
 
       await _initializeLocalNotifications();
-      _setupMessageHandlers();
+      await _setupMessageHandlers();
       await _getAndUpdateTokenIfPermitted();
       _firebaseMessaging.onTokenRefresh.listen(_onTokenRefresh);
 
@@ -173,11 +173,11 @@ class NotificationService {
     return settings;
   }
 
-  void _setupMessageHandlers() {
+  Future<void> _setupMessageHandlers() async {
     FirebaseMessaging.onBackgroundMessage(_firebaseMessagingBackgroundHandler);
     FirebaseMessaging.onMessage.listen(_onForegroundMessage);
     FirebaseMessaging.onMessageOpenedApp.listen(_onMessageOpenedApp);
-    _handleInitialMessage();
+    await _handleInitialMessage();
   }
 
   Future<void> _onForegroundMessage(RemoteMessage message) async {
