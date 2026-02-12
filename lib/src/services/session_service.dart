@@ -101,6 +101,10 @@ class SessionService with WidgetsBindingObserver {
     }
   }
 
+  void cleanup() {
+    WidgetsBinding.instance.removeObserver(this);
+  }
+
   Future<void> _updateLastActivity() async {
     await _storageService.set<int>(
         _lastActivityKey, DateTime.now().millisecondsSinceEpoch);
