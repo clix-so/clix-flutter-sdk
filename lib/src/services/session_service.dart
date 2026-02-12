@@ -58,23 +58,31 @@ class SessionService with WidgetsBindingObserver {
   }
 
   Future<void> _onResumed() async {
-    // Small delay to allow notification tap handlers to set pendingMessageId
-    await Future.delayed(const Duration(milliseconds: 100));
+    try {
+      // Small delay to allow notification tap handlers to set pendingMessageId
+      await Future.delayed(const Duration(milliseconds: 100));
 
-    final lastActivity = await _storageService.get<int>(_lastActivityKey);
-    if (lastActivity != null) {
-      final elapsed = DateTime.now().millisecondsSinceEpoch - lastActivity;
-      if (elapsed <= _effectiveTimeoutMs) {
-        _pendingMessageId = null;
-        await _updateLastActivity();
-        return;
+      final lastActivity = await _storageService.get<int>(_lastActivityKey);
+      if (lastActivity != null) {
+        final elapsed = DateTime.now().millisecondsSinceEpoch - lastActivity;
+        if (elapsed <= _effectiveTimeoutMs) {
+          _pendingMessageId = null;
+          await _updateLastActivity();
+          return;
+        }
       }
+      await _startNewSession();
+    } catch (e) {
+      ClixLogger.error('Failed to handle app resumed', e);
     }
-    await _startNewSession();
   }
 
   Future<void> _onPaused() async {
-    await _updateLastActivity();
+    try {
+      await _updateLastActivity();
+    } catch (e) {
+      ClixLogger.error('Failed to handle app paused', e);
+    }
   }
 
   Future<void> _startNewSession() async {
