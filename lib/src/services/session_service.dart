@@ -26,8 +26,7 @@ class SessionService with WidgetsBindingObserver {
     required int sessionTimeoutMs,
   })  : _storageService = storageService,
         _eventService = eventService,
-        _effectiveTimeoutMs =
-            sessionTimeoutMs < 5000 ? 5000 : sessionTimeoutMs;
+        _effectiveTimeoutMs = sessionTimeoutMs < 5000 ? 5000 : sessionTimeoutMs;
 
   Future<void> start() async {
     WidgetsBinding.instance.addObserver(this);
