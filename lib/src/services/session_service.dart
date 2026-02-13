@@ -31,17 +31,21 @@ class SessionService with WidgetsBindingObserver {
   Future<void> start() async {
     WidgetsBinding.instance.addObserver(this);
 
-    final lastActivity = await _storageService.get<int>(_lastActivityKey);
-    if (lastActivity != null) {
-      final elapsed = DateTime.now().millisecondsSinceEpoch - lastActivity;
-      if (elapsed <= _effectiveTimeoutMs) {
-        _pendingMessageId = null;
-        await _updateLastActivity();
-        ClixLogger.debug('Continuing existing session');
-        return;
+    try {
+      final lastActivity = await _storageService.get<int>(_lastActivityKey);
+      if (lastActivity != null) {
+        final elapsed = DateTime.now().millisecondsSinceEpoch - lastActivity;
+        if (elapsed <= _effectiveTimeoutMs) {
+          _pendingMessageId = null;
+          await _updateLastActivity();
+          ClixLogger.debug('Continuing existing session');
+          return;
+        }
       }
+      await _startNewSession();
+    } catch (e) {
+      ClixLogger.error('Failed to start session', e);
     }
-    await _startNewSession();
   }
 
   @override
