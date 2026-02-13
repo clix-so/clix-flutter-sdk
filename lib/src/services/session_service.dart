@@ -97,6 +97,7 @@ class SessionService with WidgetsBindingObserver {
     try {
       await _eventService.trackEvent(
         SessionEvent.sessionStart.value,
+        sourceType: 'CLIX',
         messageId: messageId,
       );
       ClixLogger.debug('${SessionEvent.sessionStart.value} tracked');
