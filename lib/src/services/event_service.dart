@@ -16,6 +16,7 @@ class EventService {
     String name, {
     Map<String, dynamic>? properties,
     String? messageId,
+    String? sourceType,
   }) async {
     try {
       ClixLogger.debug('Tracking event: $name');
@@ -35,6 +36,7 @@ class EventService {
         deviceId: deviceId,
         name: name,
         properties: cleanProperties,
+        sourceType: sourceType,
         messageId: messageId,
       );
 

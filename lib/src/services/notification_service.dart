@@ -597,6 +597,7 @@ class NotificationService {
 
     await _eventService?.trackEvent(
       eventType,
+      sourceType: 'CLIX',
       properties: properties,
       messageId: messageId,
     );
@@ -665,6 +666,7 @@ class NotificationService {
 
       await eventService.trackEvent(
         'PUSH_NOTIFICATION_RECEIVED',
+        sourceType: 'CLIX',
         properties: properties,
         messageId: messageId,
       );
@@ -841,6 +843,7 @@ Future<void> _trackPushNotificationReceivedInBackground(
 
     await eventService.trackEvent(
       'PUSH_NOTIFICATION_RECEIVED',
+      sourceType: 'CLIX',
       properties: properties,
       messageId: messageId,
     );

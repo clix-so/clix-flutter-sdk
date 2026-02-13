@@ -11,6 +11,7 @@ class EventAPIService {
     required String name,
     required Map<String, dynamic> properties,
     String? messageId,
+    String? sourceType,
   }) async {
     try {
       ClixLogger.debug('Tracking event: $name for device: $deviceId');
@@ -18,6 +19,7 @@ class EventAPIService {
       final eventRequestBody = {
         'device_id': deviceId,
         'name': name,
+        if (sourceType != null) 'source_type': sourceType,
         'event_property': {
           'custom_properties': properties,
           if (messageId != null) 'message_id': messageId,
