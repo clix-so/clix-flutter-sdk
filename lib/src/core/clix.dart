@@ -26,7 +26,7 @@ class Clix {
 
   static Clix? _shared;
   static bool _isInitializing = false;
-  static final _initCompleter = Completer<void>();
+  static Completer<void> _initCompleter = Completer<void>();
 
   // Services - nullable until initialization
   StorageService? _storageService;
@@ -145,12 +145,32 @@ class Clix {
   }
 
   /// Remove user ID
+  @Deprecated('Use reset() instead')
   static Future<void> removeUserId() async {
     await _waitForInitialization();
     try {
       await _shared!._deviceService!.removeProjectUserId();
     } catch (e) {
       throw ClixError.unknownErrorWithReason('Failed to remove user ID: $e');
+    }
+  }
+
+  /// Resets all local SDK state including device ID.
+  ///
+  /// After calling this method, you must call [initialize] again before using the SDK.
+  /// Use this when a user logs out and you want to start fresh with a new device identity.
+  static Future<void> reset() async {
+    await _waitForInitialization();
+    try {
+      _shared!._sessionService?.cleanup();
+      await _shared!._notificationService?.reset();
+      await _shared!._storageService?.remove('clix_device_id');
+      await _shared!._storageService?.remove('clix_session_last_activity');
+      _shared = null;
+      _isInitializing = false;
+      _initCompleter = Completer<void>();
+    } catch (e) {
+      throw ClixError.unknownErrorWithReason('Failed to reset: $e');
     }
   }
 
