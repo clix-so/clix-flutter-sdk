@@ -162,6 +162,8 @@ class Clix {
   static Future<void> reset() async {
     await _waitForInitialization();
     try {
+      _shared!._sessionService?.cleanup();
+      await _shared!._notificationService?.reset();
       await _shared!._storageService?.remove('clix_device_id');
       await _shared!._storageService?.remove('clix_session_last_activity');
       _shared = null;
