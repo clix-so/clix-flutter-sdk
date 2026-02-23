@@ -8,7 +8,7 @@ Add this to your package's `pubspec.yaml` file:
 
 ```yaml
 dependencies:
-  clix_flutter: ^0.0.3
+  clix_flutter: ^0.1.0
 ```
 
 Then run:
@@ -74,10 +74,17 @@ await Clix.setUserProperties({
 // Remove user properties
 await Clix.removeUserProperty('name');
 await Clix.removeUserProperties(['age', 'premium']);
-
-// Remove user ID
-await Clix.removeUserId();
 ```
+
+### Reset
+
+Use `reset()` when you need a completely fresh device identity (e.g., shared device scenarios). This clears all local SDK state and generates a new device ID on next initialization.
+
+```dart
+await Clix.reset();
+```
+
+> **Note:** After calling `reset()`, you must call `initialize()` again before using the SDK.
 
 ### Event Tracking
 
